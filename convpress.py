@@ -17,10 +17,9 @@ def main():
 
     ga = ConvGeneticAlgorithm()
 
-    population_initial_size = 80
-    population_final_size = 15
-    for c in range(population_initial_size):
-        filter_size = random.randrange(2,4)
+    population_fixed_size = 100
+    for c in range(population_fixed_size):
+        filter_size = random.randrange(2,3)
         new_filter = ConvFilter(filter_size)
         new_filter.randomize_from_list(
             unique_bytelist=cp.getByteList(),
@@ -29,7 +28,7 @@ def main():
             )
         ga.addFilter(new_filter)
 
-    generations = 10
+    generations = 5
     maxMutationChancePercentage = 0.1
 
     for g in range(generations):
@@ -48,15 +47,14 @@ def main():
             chance_of_survival=0.5,
             scores=cp.get_current_filters_scores()
             )
-        population_size = int(interp(g,[0,generations],[population_initial_size,population_final_size]))
-        ga.reproduce(population_size, cp.getUniqueByteList())
+        
+        ga.reproduce(population_fixed_size, cp.getUniqueByteList())
         # ga.kill_duplicates()
         print('---------')
     
-    # generation_to_use = ga.get_generation_with_best_score()
-    # print(f"best generation: {generation_to_use}")
-
-    generation_to_use = generations - 1
+    generation_to_use = ga.get_generation_with_best_score()
+    print(f"best generation: {generation_to_use}")
+    # generation_to_use = generations - 1
 
     cp.compress(filters = ga.getGeneration(generation_to_use))
 
