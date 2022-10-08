@@ -17,9 +17,12 @@ def main():
 
     ga = ConvGeneticAlgorithm()
 
+    min_filter_size = 2
+    max_filter_size = 3
+
     population_fixed_size = 100
     for c in range(population_fixed_size):
-        filter_size = random.randrange(2,3)
+        filter_size = random.randrange(min_filter_size,max_filter_size+1)
         new_filter = ConvFilter(filter_size)
         new_filter.randomize_from_list(
             unique_bytelist=cp.getByteList(),
@@ -28,7 +31,7 @@ def main():
             )
         ga.addFilter(new_filter)
 
-    generations = 5
+    generations = 20
     maxMutationChancePercentage = 0.1
 
     for g in range(generations):
@@ -39,12 +42,15 @@ def main():
 
         generation_score = cp.convolve_all_and_get_generation_score(ga.getPopulation())
         ga.addGenerationScore(generation_score)
-        ga.save_population()
+
         print(f"string coverage (%): {generation_score}")
+
+        ga.save_population()
+        
         # cp.debugScores()
 
         ga.naturalSelection(
-            chance_of_survival=0.5,
+            chance_of_survival=0.25,
             scores=cp.get_current_filters_scores()
             )
         
