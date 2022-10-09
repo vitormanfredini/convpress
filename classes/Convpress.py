@@ -48,10 +48,10 @@ class Convpress:
     def set_output_file(self, output_file: TextIOWrapper):
         self.output_file = output_file
     
-    def getByteList(self) -> list:
+    def get_bytelist(self) -> list:
         return self.bytelist
 
-    def getUniqueByteList(self) -> list:
+    def get_unique_bytelist(self) -> list:
         return self.uniquebytelist
 
     def get_wildcard_byte(self):
@@ -166,7 +166,8 @@ class Convpress:
     def get_current_filters_scores(self) -> list:
         return self.current_filter_scores
     
-    def debugScores(self):
+    def debug_scores(self):
+        print('debug_scores')
         print(self.current_filter_scores)
 
     def get_available_byte(self):

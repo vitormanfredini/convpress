@@ -23,6 +23,29 @@ class ConvFilter:
                     used_wildcard_once = True
             self.kernel.append(byte_to_use)
     
+    def crossover(self, other: ConvFilter):
+        
+        newFilter = ConvFilter(self.get_size())
+        newFilter.kernel = self.get_kernel().copy()
+        
+        randomSkip = 0
+        sizeDiff = abs(self.get_size() - other.get_size())
+        if sizeDiff > 0:
+            randomSkip = random.randrange(sizeDiff)
+        
+        smallerSize = self.get_size()
+        if other.get_size() < smallerSize:
+            smallerSize = other.get_size()
+
+        for c in range(smallerSize):
+            if random.choice([0,1]) == 1:
+                if self.get_size() > other.get_size():
+                    newFilter.kernel[randomSkip + c] = other.kernel[c]
+                else:
+                    newFilter.kernel[c] = other.kernel[randomSkip + c]
+
+        return newFilter
+    
     def get_kernel(self):
         return self.kernel
     

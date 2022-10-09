@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-from pprint import pp
 import random
-from numpy import interp
 from arguments import parse_args_compress
 from classes.ConvFilter import ConvFilter
 from classes.Convpress import Convpress
@@ -17,52 +15,54 @@ def main():
 
     ga = ConvGeneticAlgorithm()
 
-    min_filter_size = 2
-    max_filter_size = 3
-
-    population_fixed_size = 100
-    for c in range(population_fixed_size):
-        filter_size = random.randrange(min_filter_size,max_filter_size+1)
+    # generatin initial population
+    for c in range(args.ps):
+        filter_size = random.randrange(args.fsmin, args.fsmax+1)
         new_filter = ConvFilter(filter_size)
         new_filter.randomize_from_list(
-            unique_bytelist=cp.getByteList(),
+            unique_bytelist=cp.get_unique_bytelist(),
             wildcard_chance=0.33,
             wildcard_byte=cp.get_wildcard_byte()
             )
         ga.addFilter(new_filter)
 
-    generations = 20
-    maxMutationChancePercentage = 0.1
-
-    for g in range(generations):
+    maxMutationChancePercentage = args.mmp
+    generation_to_run = args.g
+    
+    for g in range(generation_to_run):
+        print('-------------------------')
         print(f"generation {g}")
+        
+        # ga.kill_duplicates()
 
         # ramp up mutation chance
-        ga.set_mutation_chance( (g / generations) * maxMutationChancePercentage )
+        ga.set_mutation_chance( (g / generation_to_run) * maxMutationChancePercentage )
 
         generation_score = cp.convolve_all_and_get_generation_score(ga.getPopulation())
-        ga.addGenerationScore(generation_score)
-
         print(f"string coverage (%): {generation_score}")
-
+        cp.debug_scores()
+        ga.add_generation_score(generation_score)
         ga.save_population()
         
-        # cp.debugScores()
+        if g >= generation_to_run - 1:
+            break
 
-        ga.naturalSelection(
-            chance_of_survival=0.25,
+        ga.natural_selection(
+            chance_of_survival=0.5,
             scores=cp.get_current_filters_scores()
             )
         
-        ga.reproduce(population_fixed_size, cp.getUniqueByteList())
-        # ga.kill_duplicates()
-        print('---------')
-    
+        ga.reproduce(maxFilters = args.ps)
+        ga.mutate(mutation_byte_list = cp.get_unique_bytelist())
+        
+    print('-------------------------')
     generation_to_use = ga.get_generation_with_best_score()
     print(f"best generation: {generation_to_use}")
-    # generation_to_use = generations - 1
 
-    cp.compress(filters = ga.getGeneration(generation_to_use))
+    ga.load_population_from_history(generation_to_use)
+    ga.kill_duplicates()
+
+    cp.compress(filters = ga.getPopulation())
 
 if __name__ == '__main__':
     main()

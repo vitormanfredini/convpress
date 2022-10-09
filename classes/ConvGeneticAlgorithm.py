@@ -27,10 +27,10 @@ class ConvGeneticAlgorithm:
                 print(kernel[c],end=' ')
             print()
     
-    def getGeneration(self, generation) -> List[ConvFilter]:
+    def getGeneration(self, generation: int) -> List[ConvFilter]:
         return self.history[generation]
     
-    def naturalSelection(self, chance_of_survival: float, scores: list):
+    def natural_selection(self, chance_of_survival: float, scores: list):
         """Ordena os filtros pelo seu score e  ordem Mantem apenas os filtros que estão """
 
         max_score = 0
@@ -52,38 +52,20 @@ class ConvGeneticAlgorithm:
     
     def save_population(self):
         self.history.append(self.population.copy())
+    
+    def load_population_from_history(self, generation: int):
+        self.population = self.history[generation].copy()
 
-    def shouldMutate(self):
+    def should_mutate(self):
         randomint = random.randint(0,100000)
         return (randomint  / 100000) < self.mutation_chance
 
-    def crossover(self, filterA: ConvFilter, filterB: ConvFilter, mutation_byte_list: list):
-        
-        newFilter = ConvFilter(filterA.get_size())
-        newFilter.kernel = filterA.get_kernel().copy()
-        
-        randomSkip = 0
-        sizeDiff = abs(filterA.get_size() - filterB.get_size())
-        if sizeDiff > 0:
-            randomSkip = random.randrange(sizeDiff)
-        
-        smallerSize = filterA.get_size()
-        if filterB.get_size() < smallerSize:
-            smallerSize = filterB.get_size()
-
-        for c in range(smallerSize):
-            if random.randrange(2) == 0:
-                if filterA.get_size() > filterB.get_size():
-                    newFilter.kernel[randomSkip + c] = filterB.kernel[c]
-                else:
-                    newFilter.kernel[c] = filterB.kernel[randomSkip + c]
-        
-        if self.shouldMutate():
-            rand_filter_idx = random.randrange(newFilter.get_size())
-            rand_byte_idx = random.randrange(len(mutation_byte_list))
-            newFilter.kernel[rand_filter_idx] = mutation_byte_list[rand_byte_idx]
-
-        return newFilter
+    def mutate(self, mutation_byte_list: List[bytes]):
+        for filter in self.population:
+            if self.should_mutate():
+                rand_filter_idx = random.randrange(filter.get_size())
+                rand_byte_idx = random.randrange(len(mutation_byte_list))
+                filter.kernel[rand_filter_idx] = mutation_byte_list[rand_byte_idx]
     
     def get_generation_with_best_score(self):
         indexMax = 0
@@ -97,10 +79,10 @@ class ConvGeneticAlgorithm:
     def get_generation_scores(self):
         return self.generation_scores
     
-    def addGenerationScore(self, score: float):
+    def add_generation_score(self, score: float):
         self.generation_scores.append(score)
 
-    def reproduce(self, maxFilters: int, mutation_byte_list: list):
+    def reproduce(self, maxFilters: int):
         newFilters = []
         while len(newFilters) < maxFilters:
             
@@ -109,7 +91,7 @@ class ConvGeneticAlgorithm:
             rand_idx = random.randrange(len(self.population))
             parentB = self.population[rand_idx]
             
-            babyFilter = self.crossover(parentA, parentB, mutation_byte_list)
+            babyFilter = parentA.crossover(parentB)
             newFilters.append(babyFilter)
 
         self.population = newFilters
