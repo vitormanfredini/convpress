@@ -38,9 +38,11 @@ def main():
         # ramp up mutation chance
         ga.set_mutation_chance( (g / generation_to_run) * maxMutationChancePercentage )
 
-        generation_score = cp.convolve_all_and_get_generation_score(ga.getPopulation())
-        print(f"string coverage (%): {generation_score}")
-        cp.debug_scores()
+        cp.convolve_all(filtersToConvolve = ga.get_population())
+        generation_score = cp.calculate_generation_score()
+        print(f"generation score: {generation_score}")
+        # cp.debug_scores()
+
         ga.add_generation_score(generation_score)
         ga.save_population()
         
@@ -62,7 +64,7 @@ def main():
     ga.load_population_from_history(generation_to_use)
     ga.kill_duplicates()
 
-    cp.compress(filters = ga.getPopulation())
+    cp.compress(filters = ga.get_population())
 
 if __name__ == '__main__':
     main()

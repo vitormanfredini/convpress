@@ -17,7 +17,7 @@ class ConvGeneticAlgorithm:
     def set_mutation_chance(self, percentage: float) -> None:
         self.mutation_chance = percentage
     
-    def getPopulation(self) -> List[ConvFilter]:
+    def get_population(self) -> List[ConvFilter]:
         return self.population
 
     def debugFilters(self):
@@ -31,24 +31,10 @@ class ConvGeneticAlgorithm:
         return self.history[generation]
     
     def natural_selection(self, chance_of_survival: float, scores: list):
-        """Ordena os filtros pelo seu score e  ordem Mantem apenas os filtros que estão """
+        """Order population by individual score and remove those below chance of survival"""
 
-        max_score = 0
-        for s in range(len(scores)):
-            if scores[s] > max_score:
-                max_score = scores[s]
-
-        alive = []
-        score_subtract = 0
         max_stay_alive = int(len(scores) * chance_of_survival)
-        while len(alive) < max_stay_alive:
-            scoreToBeAlive = max_score - score_subtract
-            for c in range(len(scores)):
-                if scores[c] == scoreToBeAlive:
-                    alive.append(self.population[c])
-            score_subtract += 1
-
-        self.population = alive[0:max_stay_alive]
+        self.population = [x for _, x in sorted(zip(scores, self.population), key=lambda pair: pair[0])][-max_stay_alive:]
     
     def save_population(self):
         self.history.append(self.population.copy())

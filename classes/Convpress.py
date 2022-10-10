@@ -28,11 +28,13 @@ class Convpress:
     input_file: TextIOWrapper = None
     output_file: TextIOWrapper = None
     wildcard_byte: bytes = None
-    current_filter_scores: List[float] = field(default_factory=list)
+    current_filters_scores: List[float] = field(default_factory=list)
+    current_filters_matches: List[List[int]] = field(default_factory=list)
 
     bytes_to_decompress: List[bytes] = field(default_factory=list)
     decompress_filters: List[ConvFilter] = field(default_factory=list)
-    
+    current_filters_indexes_it_affects: List[List[bool]] = field(default_factory=list)
+    filters_in_use: List[ConvFilter] = field(default_factory=list)
 
     def reset(self):
         self.bytelist = []
@@ -40,10 +42,17 @@ class Convpress:
         self.adittionalbytelist = []
         self.input_file = None
         self.wildcard_byte = None
-        self.current_filter_scores = []
+        self.current_filters_scores = []
+        self.current_filters_matches = []
 
-        self.decompress_filters: List[ConvFilter] = []
-        self.bytes_to_decompress: List[ConvFilter] = []
+        # boolean lists that represent each byte in the input file 
+        # as true if the filter matched that part 
+        # or false if it didn't
+        self.current_filters_indexes_it_affects = []
+
+        self.decompress_filters = []
+        self.bytes_to_decompress = []
+        self.filters_in_use = []
     
     def set_output_file(self, output_file: TextIOWrapper):
         self.output_file = output_file
@@ -109,7 +118,22 @@ class Convpress:
         self.input_file.close()
         
         self.wildcard_byte = self.get_available_byte()
-        
+    
+    def get_wildcards_indexes(self, filter: ConvFilter):
+        kernel = filter.get_kernel()
+        indexes = []
+        for i in range(len(kernel)):
+            if kernel[i] == self.wildcard_byte:
+                indexes.append(i)
+        return indexes
+
+    def convolve_all(self, filtersToConvolve: List[ConvFilter]):
+        self.filters_in_use = filtersToConvolve
+        self.current_filters_matches = []
+        for filter in self.filters_in_use:
+            matches = self.__convolve(filter)
+            self.current_filters_matches.append(matches)
+    
     def __convolve(self, filter: ConvFilter):
         kernel = filter.get_kernel()
         matches = []
@@ -128,47 +152,67 @@ class Convpress:
             else:
                 c += 1
         return matches
+    
+    def calculate_generation_score(self):
+        self.__generate_boolean_lists_of_filters_matches()
 
-    def get_wildcards_indexes(self, filter: ConvFilter):
-        kernel = filter.get_kernel()
-        indexes = []
-        for i in range(len(kernel)):
-            if kernel[i] == self.wildcard_byte:
-                indexes.append(i)
-        return indexes
+        indexes_repetition_count: List[int] = [0 for i in range(len(self.bytelist))]
+        for boolean_list in self.current_filters_indexes_it_affects:
+            for idx, item in enumerate(boolean_list):
+                if item:
+                    indexes_repetition_count[idx] += 1
+        
+        self.current_filters_scores = []
+        score_sum = 0
+        for boolean_list in self.current_filters_indexes_it_affects:
+            score = self.calculate_one_score(
+                bytes_affected_by_filter = boolean_list,
+                bytes_repetition = indexes_repetition_count
+                )
+            score_sum =+ score
+            self.current_filters_scores.append(score)
+        
+        return score_sum / len(self.current_filters_indexes_it_affects)
+    
+    def __generate_boolean_lists_of_filters_matches(self):
+        """
+        This functions generate booleans lists 
+        that have the same length as the input file and
+        they hold true where that byte matched with the filter 
+        or false where it didn't"""
 
-    def convolve_all_and_get_generation_score(self, filtersToConvolve: List[ConvFilter]):
-        """
-        Calculate and return the generation score
-        which is the percentage of the string
-        that was covered by all filters.
-        Individual filter scores are also calculated
-        based on how many matches it found.
-        """
-        unique_matches = []
-        self.current_filter_scores = []
-        for filter in filtersToConvolve:
-            matches = self.__convolve(filter)
-            for match_index in matches:
-                if match_index not in unique_matches:
-                    unique_matches.append(match_index)
-            filter_score = len(matches) * (filter.get_size() - len(self.get_wildcards_indexes(filter)))
-            self.current_filter_scores.append(filter_score)
-        return len(unique_matches) / len(self.bytelist)
+        self.current_filters_indexes_it_affects = []
+        for idx_matches, filter_matches in enumerate(self.current_filters_matches):
+            filter = self.filters_in_use[idx_matches]
+            indexes_it_affects = [False for i in range(len(self.bytelist))]
+            count_bytes_it_affects = 0
+            for match_index in filter_matches:
+                for k in range(filter.get_size()):
+                    if filter.get_kernel()[k] != self.wildcard_byte:
+                        indexes_it_affects[match_index+k] = True
+                        count_bytes_it_affects += 1
+            self.current_filters_indexes_it_affects.append(indexes_it_affects)
+
+    def calculate_one_score(self, bytes_affected_by_filter: List[bool], bytes_repetition: List[int]):
+        score = 0
+        for idx_affected, affected in enumerate(bytes_affected_by_filter):
+            if affected:
+                score += 1 / (bytes_repetition[idx_affected] + 1)
+        return score
     
     def getMaxScore(self):
         max = 0
-        for score in self.current_filter_scores:
+        for score in self.current_filters_scores:
             if score > max:
                 max = score
         return max
 
     def get_current_filters_scores(self) -> list:
-        return self.current_filter_scores
+        return self.current_filters_scores
     
     def debug_scores(self):
         print('debug_scores')
-        print(self.current_filter_scores)
+        print(self.current_filters_scores)
 
     def get_available_byte(self):
         for i in range(sys.maxunicode):
