@@ -1,8 +1,12 @@
+"""
+Genetic algorhithm for finding the best combination of filters for compressing a file
+"""
 import random
 from typing import List
 from classes.ConvFilter import ConvFilter
 
 class ConvGeneticAlgorithm:
+    """Genetic Algorhithm"""
 
     def __init__(self):
         self.population: ConvFilter = []
@@ -11,12 +15,14 @@ class ConvGeneticAlgorithm:
         self.history = []
         self.generation_scores = []
 
-    def addFilter(self, filter: ConvFilter):
-        self.population.append(filter)
+    def addFilter(self, filter_to_add: ConvFilter):
+        """Adds filter"""
+        self.population.append(filter_to_add)
 
     def set_mutation_chance(self, percentage: float) -> None:
+        """Set mutation chance with value between 0.0 and 1.0"""
         self.mutation_chance = percentage
-    
+
     def get_population(self) -> List[ConvFilter]:
         return self.population
 
