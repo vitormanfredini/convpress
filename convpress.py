@@ -6,16 +6,18 @@ from classes.Convpress import Convpress
 from classes.ConvGeneticAlgorithm import ConvGeneticAlgorithm
 
 def main():
-    
+
     args = parse_args_compress()
 
     cp = Convpress()
+    print(f"Loading: {args.input_file.name}")
     cp.load_file(args.input_file)
     cp.set_output_file(args.output_file)
 
     ga = ConvGeneticAlgorithm()
 
-    # generate initial random population
+    print('-------------------------')
+
     for c in range(args.ps):
         filter_size = random.randrange(args.fsmin, args.fsmax+1)
         new_filter = ConvFilter(filter_size)
@@ -26,21 +28,14 @@ def main():
             )
         ga.addFilter(new_filter)
 
-    maxMutationChancePercentage = args.mmp
+    ga.set_mutation_chance(args.mcp)
     generation_to_run = args.g
-    
-    for g in range(generation_to_run):
-        print('-------------------------')
-        print(f"generation {g}")
-        
-        # ga.kill_duplicates()
 
-        # ramp up mutation chance
-        ga.set_mutation_chance( (g / generation_to_run) * maxMutationChancePercentage )
+    for g in range(generation_to_run):
 
         cp.convolve_all(filtersToConvolve = ga.get_population())
         generation_score = cp.calculate_generation_score()
-        print(f"generation score: {generation_score}")
+        print(f"generation {g} score: {generation_score}")
         # cp.debug_scores()
 
         ga.add_generation_score(generation_score)
@@ -64,6 +59,7 @@ def main():
     ga.load_population_from_history(generation_to_use)
     ga.kill_duplicates()
 
+    print("Compressing...")
     cp.compress(filters = ga.get_population())
 
 if __name__ == '__main__':

@@ -5,15 +5,24 @@ from typing import List
 from utils.bytes_operations import bytestring_to_bytelist
 
 class ConvFilter:
+    """
+    Kernel/filter for sequences of bytes
+    """
 
     def __init__(self,size: int):
         self.kernel: bytes = List[bytes]
         self.kernel = []
-        for i in range(size):
+        for _ in range(size):
             self.kernel.append(b"")
         self.size = size
-        
+
     def randomize_from_list(self,unique_bytelist: list, wildcard_chance: float, wildcard_byte):
+        """
+        Randomize kernel bytes using a list of bytes,
+        from filter size and bigger,
+        all indexes (except both ends) have a wildcard_chance (between 0 and 1)
+        of receiving a wildcard_byte
+        """
         self.kernel = []
         used_wildcard_once = False
         for c in range(self.size):

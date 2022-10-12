@@ -13,3 +13,6 @@ Testes:
 python3 -m tests.substitute_matches_for_byte
 python3 -m tests.bytelist_bytestring_backandforth
 ```
+
+TODO:
+tests for the decompression process

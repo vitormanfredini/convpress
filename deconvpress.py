@@ -13,6 +13,7 @@ def main():
     cp = Convpress()
     cp.load_file_for_decompression(args.input_file)
     cp.set_output_file(args.output_file)
+    print("Decompressing...")
     cp.decompress()
 
 if __name__ == '__main__':
