@@ -275,7 +275,7 @@ class Convpress:
         """process bytelist replacing filter matches with new bytes representing the filter"""
         print("Compressing...")
         used_filters: List[ConvFilter] = []
-        used_newbytes: List[byte] = []
+        used_newbytes: List[bytes] = []
         for filter in filters:
             matches = self.__convolve(filter)
             if len(matches) < self.get_min_matches_necessary():
