@@ -2,6 +2,8 @@ from __future__ import annotations
 import random
 from typing import List
 
+from utils.bytes_operations import bytestring_to_bytelist
+
 class ConvFilter:
 
     def __init__(self,size: int):
@@ -23,6 +25,10 @@ class ConvFilter:
                     used_wildcard_once = True
             self.kernel.append(byte_to_use)
     
+    def set_kernel_bytes_using_bytestring(self, bytestring: bytes):
+        self.kernel = bytestring_to_bytelist(bytestring)
+        assert len(self.kernel) == self.get_size()
+
     def crossover(self, other: ConvFilter):
         
         newFilter = ConvFilter(self.get_size())

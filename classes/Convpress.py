@@ -6,6 +6,8 @@ import sys
 from typing import List
 from classes.ConvFilter import ConvFilter
 
+from utils.bytes_operations import bytestring_to_bytelist
+
 class RanOutOfPossibleBytes(Exception):
     pass
 
@@ -36,6 +38,8 @@ class Convpress:
     current_filters_indexes_it_affects: List[List[bool]] = field(default_factory=list)
     filters_in_use: List[ConvFilter] = field(default_factory=list)
 
+    encoding: str = "latin1"
+
     def reset(self):
         self.bytelist = []
         self.uniquebytelist = []
@@ -65,6 +69,9 @@ class Convpress:
 
     def get_wildcard_byte(self):
         return self.wildcard_byte
+
+    def load_bytelist_from_bytestring(self, bytestring: bytes):
+        self.bytelist = bytestring_to_bytelist(bytestring)
     
     def load_file_for_decompression(self, filename: TextIOWrapper):
         self.reset()
@@ -179,7 +186,8 @@ class Convpress:
         This functions generate booleans lists 
         that have the same length as the input file and
         they hold true where that byte matched with the filter 
-        or false where it didn't"""
+        or false where it didn't
+        """
 
         self.current_filters_indexes_it_affects = []
         for idx_matches, filter_matches in enumerate(self.current_filters_matches):
@@ -215,11 +223,17 @@ class Convpress:
         print(self.current_filters_scores)
 
     def get_available_byte(self):
-        for i in range(sys.maxunicode):
-            try:
-                byte = chr(i).encode('utf-8')
-            except UnicodeEncodeError as e:
-                continue
+        if self.encoding == 'utf-8':
+            max = sys.maxunicode
+        elif self.encoding == 'latin1':
+            max = 256
+        else:
+            raise ValueError(f"Encoding {self.encoding} is not supported")
+        for i in range(max):
+            # try:
+            byte = chr(i).encode(self.encoding)
+            # except UnicodeEncodeError as e:
+            #     continue
             if len(byte) > 1:
                 continue
             if byte in self.uniquebytelist:
@@ -238,7 +252,7 @@ class Convpress:
         """
         Generate the header to hold the filter data.
         Returns a byte string like this: "cp$002003ima02pa02os"
-        2 bytes to represent the "cp" marker
+        2 bytes to represent the convpress marker: "cp"
         + 1 byte to represent the wildcard
         + 4 byte to represent the number of filters (from 0000 to 9999)
         then for each filter
@@ -247,19 +261,19 @@ class Convpress:
             + the filter itself (number of bytes will be the same as the filter size)
         """
         
-        header = f"cp".encode()
+        header = f"cp".encode(self.encoding)
         header += self.wildcard_byte
-        header += f"{len(filters):04}".encode()
+        header += f"{len(filters):04}".encode(self.encoding)
         for idx, filter in enumerate(filters):
             header += bytes[idx]
-            header += f"{filter.get_size():02}".encode()
+            header += f"{filter.get_size():02}".encode(self.encoding)
             for byte in filter.get_kernel():
                 header += byte
         return header
 
     def compress(self, filters: List[ConvFilter]) -> None:
         """process bytelist replacing filter matches with new bytes representing the filter"""
-        print("Compressing")
+        print("Compressing...")
         used_filters: List[ConvFilter] = []
         used_newbytes: List[byte] = []
         for filter in filters:
@@ -267,20 +281,11 @@ class Convpress:
             if len(matches) < self.get_min_matches_necessary():
                 continue
             newbyte = self.get_available_byte()
-            for pos in matches:
-                self.bytelist[pos] = newbyte
-            indexes_to_pop = []
-            for idx, byte in enumerate(self.bytelist):
-                if byte == newbyte:
-                    wildcard_indexes = self.get_wildcards_indexes(filter=filter)
-                    for f in range(filter.get_size()):
-                        if f == 0:
-                            # self.bytelist[idx+f] = self.bytelist[idx+f].encode('utf-8')
-                            continue
-                        if f not in wildcard_indexes:
-                            indexes_to_pop.append(idx+f)
-            for index in reversed(indexes_to_pop):
-                self.bytelist.pop(index)
+            self.substitute_matches_for_newbyte(
+                matches = matches,
+                newbyte = newbyte, 
+                filter = filter
+                )
             used_filters.append(filter)
             used_newbytes.append(newbyte)
 
@@ -289,10 +294,27 @@ class Convpress:
         for b in self.bytelist:
             self.output_file.write(b)
         self.output_file.close()
+    
+    def substitute_matches_for_newbyte(self, matches, newbyte, filter):
+        
+        filter_wildcard_indexes = self.get_wildcards_indexes(filter=filter)
+
+        for pos in matches:
+            self.bytelist[pos] = newbyte
+
+        indexes_to_pop = []
+        for idx, byte in enumerate(self.bytelist):
+            if byte == newbyte:
+                for f in range(filter.get_size()):
+                    if f > 0 and f not in filter_wildcard_indexes:
+                        indexes_to_pop.append(idx+f)
+
+        for index in reversed(indexes_to_pop):
+            self.bytelist.pop(index)
 
     def decompress(self) -> None:
         """process bytelist replacing the bytes for its corresponding filter"""
-        print("Decompressing")
+        print("Decompressing...")
         for idx, byte in enumerate(self.bytelist):
             for byte_decompress_idx, b in enumerate(self.bytes_to_decompress):
                 if byte != b:

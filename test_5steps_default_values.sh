@@ -13,3 +13,6 @@
 ./deconvpress.py data/decompressed3.cp data/decompressed2.cp
 ./deconvpress.py data/decompressed2.cp data/decompressed1.cp
 ./deconvpress.py data/decompressed1.cp data/loremipsum-decompressed.txt
+
+diff_result=`diff data/loremipsum.txt data/loremipsum-decompressed.txt | wc -c`
+echo "different bytes: $diff_result"

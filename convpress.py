@@ -6,7 +6,7 @@ from classes.Convpress import Convpress
 from classes.ConvGeneticAlgorithm import ConvGeneticAlgorithm
 
 def main():
-
+    
     args = parse_args_compress()
 
     cp = Convpress()
@@ -15,7 +15,7 @@ def main():
 
     ga = ConvGeneticAlgorithm()
 
-    # generatin initial population
+    # generate initial random population
     for c in range(args.ps):
         filter_size = random.randrange(args.fsmin, args.fsmax+1)
         new_filter = ConvFilter(filter_size)
