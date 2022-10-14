@@ -1,5 +1,5 @@
 """
-Test to check if bytes are being replaced by the filters correctly
+Test to check if matches are being replaced by the compression byte correctly
 """
 import unittest
 import sys
@@ -12,7 +12,7 @@ sys.path.append("..")
 class Testing(unittest.TestCase):
     """Tests the replacement of bytes with different filter lengths and the presence of wildcards"""
 
-    def test_substitute_filter_length_2(self):
+    def test_replace_filter_length_2(self):
         """Test with length 2 filter"""
 
         filter_to_test = ConvFilter(2)
@@ -20,7 +20,7 @@ class Testing(unittest.TestCase):
         cp.load_bytelist_from_bytestring(
             b"\xfd\xe8r\xc9\x1e?\xfda\xe8\xc9\xa4\xb9a\xfd\xe8\xfd7\xa4"
             )
-        cp.substitute_matches_for_newbyte(
+        cp.replace_matches_for_newbyte(
                 matches = [0,13],
                 newbyte = b"\x02",
                 filter_used = filter_to_test
@@ -28,7 +28,7 @@ class Testing(unittest.TestCase):
         bytestring_should_be = b"\x02r\xc9\x1e?\xfda\xe8\xc9\xa4\xb9a\x02\xfd7\xa4"
         self.assertTrue(bytelist_to_bytestring(cp.bytelist) == bytestring_should_be)
 
-    def test_substitute_filter_length_3(self):
+    def test_replace_filter_length_3(self):
         """Test with length 3 filter"""
 
         filter_to_test = ConvFilter(3)
@@ -36,7 +36,7 @@ class Testing(unittest.TestCase):
         cp.load_bytelist_from_bytestring(
             b"\xfd\xe8r\xc9\x1e?\xfda\xe8\xc9\xa4\xb9a\xfd\xe8\xfd7\xa4"
             )
-        cp.substitute_matches_for_newbyte(
+        cp.replace_matches_for_newbyte(
                 matches = [8],
                 newbyte = b"\x07",
                 filter_used = filter_to_test
@@ -44,7 +44,7 @@ class Testing(unittest.TestCase):
         bytestring_should_be = b"\xfd\xe8r\xc9\x1e?\xfda\x07\xb9a\xfd\xe8\xfd7\xa4"
         self.assertTrue(bytelist_to_bytestring(cp.bytelist) == bytestring_should_be)
 
-    def test_substitute_filter_length_3_with_wildcard(self):
+    def test_replace_filter_length_3_with_wildcard(self):
         """Test with length 3 filter with wildcard"""
 
         filter_to_test = ConvFilter(3)
@@ -53,7 +53,7 @@ class Testing(unittest.TestCase):
             b"\xfd\xe8\x55\xa4\x1e?\xfda\xe8\xc9\xe8\x3a\xa4\xfd\xe8\xfd7\xa4"
             )
         cp.wildcard_byte = b"\x12"
-        cp.substitute_matches_for_newbyte(
+        cp.replace_matches_for_newbyte(
                 matches = [1,10],
                 newbyte = b"\x07",
                 filter_used = filter_to_test

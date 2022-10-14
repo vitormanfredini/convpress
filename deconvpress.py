@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-from pprint import pp
-import random
+"""
+Program to decompress a file that was compressed by convpress.
+"""
+
 from arguments import parse_args_decompress
-from classes.ConvFilter import ConvFilter
 from classes.Convpress import Convpress
-from classes.ConvGeneticAlgorithm import ConvGeneticAlgorithm
 
 def main():
-    
+    """Decompresses a file that was compressed by convpress."""
+
     args = parse_args_decompress()
 
-    cp = Convpress()
-    cp.load_file_for_decompression(args.input_file)
-    cp.set_output_file(args.output_file)
+    convpress = Convpress()
+    convpress.load_file_for_decompression(args.input_file)
+    convpress.set_output_file(args.output_file)
     print("Decompressing...")
-    cp.decompress()
+    convpress.decompress()
 
 if __name__ == '__main__':
     main()

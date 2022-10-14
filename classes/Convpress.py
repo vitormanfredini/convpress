@@ -324,15 +324,20 @@ class Convpress:
         used_newbytes: List[bytes] = []
 
         for filter_to_convolve in filters:
+
             matches = self.__convolve(filter_to_convolve)
+
             if len(matches) < self.get_min_matches_necessary():
                 continue
+
             newbyte = self.get_available_byte()
-            self.substitute_matches_for_newbyte(
+
+            self.replace_matches_for_newbyte(
                 matches = matches,
                 newbyte = newbyte,
                 filter_used = filter_to_convolve
                 )
+
             used_filters.append(filter_to_convolve)
             used_newbytes.append(newbyte)
 
@@ -343,7 +348,7 @@ class Convpress:
             self.output_file.write(byte)
         self.output_file.close()
 
-    def substitute_matches_for_newbyte(self, matches, newbyte, filter_used):
+    def replace_matches_for_newbyte(self, matches, newbyte, filter_used):
         """
         Replaces the bytes where the matches happened
         for the byte that represents the filter
@@ -365,23 +370,32 @@ class Convpress:
             self.bytelist.pop(index)
 
     def decompress(self) -> None:
-        """process bytelist replacing the bytes for its corresponding filter"""
+        """
+        Decompress the bytelist by replacing the bytes
+        for its corresponding filter's kernel
+        """
 
         for idx, byte in enumerate(self.bytelist):
             for byte_decompress_idx, byte_to_decompress in enumerate(self.bytes_to_decompress):
                 if byte != byte_to_decompress:
                     continue
 
-                filter_for_decompression: ConvFilter = self.decompress_filters[byte_decompress_idx]
-                kernel = filter_for_decompression.get_kernel()
-                for k in range(filter_for_decompression.get_size()):
-                    if kernel[k] == self.wildcard_byte:
-                        continue
-                    if k == 0:
-                        self.bytelist[idx] = kernel[k]
-                    else:
-                        self.bytelist.insert(idx+k,kernel[k])
+                self.replace_byte_for_kernel(idx, self.decompress_filters[byte_decompress_idx])
 
         for byte_to_decompress in self.bytelist:
             self.output_file.write(byte_to_decompress)
         self.output_file.close()
+
+    def replace_byte_for_kernel(self, byte_index: int, filter_for_decompression: ConvFilter):
+        """
+        Decompress one byte at specific index for a filter's kernel.
+        This process accounts for wildcards too.
+        """
+
+        for kernel_idx, kernel_byte in enumerate(filter_for_decompression.get_kernel()):
+            if kernel_byte == self.wildcard_byte:
+                continue
+            if kernel_idx == 0:
+                self.bytelist[byte_index] = kernel_byte
+            else:
+                self.bytelist.insert(byte_index + kernel_idx, kernel_byte)

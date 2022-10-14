@@ -15,7 +15,7 @@ class ConvGeneticAlgorithm:
         self.history = []
         self.generation_scores = []
 
-    def addFilter(self, filter_to_add: ConvFilter):
+    def add_filter(self, filter_to_add: ConvFilter):
         """Adds filter"""
         self.population.append(filter_to_add)
 
@@ -24,73 +24,85 @@ class ConvGeneticAlgorithm:
         self.mutation_chance = percentage
 
     def get_population(self) -> List[ConvFilter]:
+        """get list of all filters in the current population"""
         return self.population
 
-    def debugFilters(self):
-        for i in range(len(self.population)):
-            kernel = self.population[i].get_kernel()
-            for c in range(len(kernel)):
-                print(kernel[c],end=' ')
+    def debug_filters(self):
+        """prints all filters' kernels"""
+
+        for filter_to_debug in self.population:
+            kernel = filter_to_debug.get_kernel()
+            for kernel_byte in kernel:
+                print(kernel_byte,end=' ')
             print()
-    
-    def getGeneration(self, generation: int) -> List[ConvFilter]:
+
+    def get_generation(self, generation: int) -> List[ConvFilter]:
+        """get specific generation list of filters"""
         return self.history[generation]
-    
+
     def natural_selection(self, chance_of_survival: float, scores: list):
         """Order population by individual score and remove those below chance of survival"""
 
         max_stay_alive = int(len(scores) * chance_of_survival)
         self.population = [x for _, x in sorted(zip(scores, self.population), key=lambda pair: pair[0])][-max_stay_alive:]
-    
+
     def save_population(self):
+        """save current population of filters in the history"""
         self.history.append(self.population.copy())
-    
+
     def load_population_from_history(self, generation: int):
+        """load population of filters from history"""
         self.population = self.history[generation].copy()
 
     def should_mutate(self):
-        randomint = random.randint(0,100000)
-        return (randomint  / 100000) < self.mutation_chance
+        """random chance of mutation"""
+        return random.uniform(0, 1) < self.mutation_chance
 
-    def mutate(self, mutation_byte_list: List[bytes]):
-        for filter in self.population:
+    def mutation(self, mutation_byte_list: List[bytes]):
+        """Mutate one byte of the kernel"""
+        for filter_to_mutate in self.population:
             if self.should_mutate():
-                rand_filter_idx = random.randrange(filter.get_size())
+                rand_filter_idx = random.randrange(filter_to_mutate.get_size())
                 rand_byte_idx = random.randrange(len(mutation_byte_list))
-                filter.kernel[rand_filter_idx] = mutation_byte_list[rand_byte_idx]
-    
+                filter_to_mutate.kernel[rand_filter_idx] = mutation_byte_list[rand_byte_idx]
+
     def get_generation_with_best_score(self):
-        indexMax = 0
-        maxScore = 0
+        """find generation with the best score"""
+        index_max = 0
+        max_score = 0
         for idx, score in enumerate(self.generation_scores):
-            if score > maxScore:
-                maxScore = score
-                indexMax = idx
-        return indexMax
+            if score > max_score:
+                max_score = score
+                index_max = idx
+        return index_max
 
     def get_generation_scores(self):
+        """get list of the scores from all generations"""
         return self.generation_scores
-    
+
     def add_generation_score(self, score: float):
+        """add one generation score"""
         self.generation_scores.append(score)
 
-    def reproduce(self, maxFilters: int):
-        newFilters = []
-        while len(newFilters) < maxFilters:
-            
-            rand_idx = random.randrange(len(self.population))
-            parentA = self.population[rand_idx]
-            rand_idx = random.randrange(len(self.population))
-            parentB = self.population[rand_idx]
-            
-            babyFilter = parentA.crossover(parentB)
-            newFilters.append(babyFilter)
+    def reproduce(self, max_filters: int):
+        """cross filters' kernels to produce new filters"""
+        new_filters = []
+        while len(new_filters) < max_filters:
 
-        self.population = newFilters
+            rand_idx = random.randrange(len(self.population))
+            mommy = self.population[rand_idx]
+            rand_idx = random.randrange(len(self.population))
+            daddy = self.population[rand_idx]
+
+            baby = mommy.crossover(daddy)
+            new_filters.append(baby)
+
+        self.population = new_filters
 
     def kill_duplicates(self):
-        withoutDuplicates = []
-        for filter in self.population:
-            if filter not in withoutDuplicates:
-                withoutDuplicates.append(filter)
-        self.population = withoutDuplicates
+        """removes duplicates from the current population"""
+        without_duplicates = []
+        for filter_to_check in self.population:
+            if filter_to_check not in without_duplicates:
+                without_duplicates.append(filter_to_check)
+        self.population = without_duplicates
