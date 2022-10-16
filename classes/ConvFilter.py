@@ -83,6 +83,14 @@ class ConvFilter:
 
         return new_filter
 
+    def get_wildcards_indexes(self, wildcard_byte: bytes) -> List:
+        """get a list of indexes of all the wildcards in the kernel"""
+        indexes = []
+        for kernel_idx, kernel_byte in enumerate(self.get_kernel()):
+            if kernel_byte == wildcard_byte:
+                indexes.append(kernel_idx)
+        return indexes
+
     def get_kernel(self):
         """get kernel's list of bytes"""
         return self.kernel

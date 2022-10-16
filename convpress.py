@@ -43,7 +43,7 @@ def main():
         convpress.convolve_all(filters_to_convolve = genetic_algorithm.get_population())
         generation_score = convpress.calculate_generation_score()
 
-        print_banner(f"generation {generation} score: {generation_score}")
+        print(f"score: {generation_score}")
 
         genetic_algorithm.add_generation_score(generation_score)
         genetic_algorithm.save_population()

@@ -10,7 +10,7 @@ def parse_args_compress():
     parser.add_argument('input_file',type=argparse.FileType('rb'))
     parser.add_argument('output_file',type=argparse.FileType('wb'))
     parser.add_argument('--ps', '--population_size', type=int,
-        default=200, help='max number of filters in each generation'
+        default=75, help='max number of filters in each generation'
         )
     parser.add_argument('--g', '--generations', type=int,
         default=20, help='how many generations to run',
@@ -22,7 +22,7 @@ def parse_args_compress():
         default=3, help='maximum filter',
         )
     parser.add_argument('--mcp', '--mutation_chance_percentage', type=float,
-        default=0.05, help='percentage of filters that will suffer mutation',
+        default=0.3, help='percentage of filters that will suffer mutation',
         )
     return parser.parse_args()
 

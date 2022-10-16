@@ -133,24 +133,15 @@ class Convpress:
 
         self.wildcard_byte = self.get_available_byte()
 
-    def get_wildcards_indexes(self, from_filter: ConvFilter):
-        """get a list of indexes of all the wildcards in the kernel"""
-        kernel = from_filter.get_kernel()
-        indexes = []
-        for idx, byte in enumerate(kernel):
-            if byte == self.wildcard_byte:
-                indexes.append(idx)
-        return indexes
-
     def convolve_all(self, filters_to_convolve: List[ConvFilter]):
         """convolve all filters and save their matches"""
         self.filters_in_use = filters_to_convolve
         self.current_filters_matches = []
         for filter_to_convolve in self.filters_in_use:
-            matches = self.__convolve(filter_to_convolve)
+            matches = self.convolve(filter_to_convolve)
             self.current_filters_matches.append(matches)
 
-    def __convolve(self, filter_to_convolve: ConvFilter):
+    def convolve(self, filter_to_convolve: ConvFilter):
 
         kernel = filter_to_convolve.get_kernel()
         matches = []
@@ -338,7 +329,7 @@ class Convpress:
 
         for filter_to_convolve in filters:
 
-            matches = self.__convolve(filter_to_convolve)
+            matches = self.convolve(filter_to_convolve)
 
             if len(matches) < self.get_min_matches_necessary():
                 continue
@@ -362,7 +353,8 @@ class Convpress:
         and remove the rest from the array
         """
 
-        filter_wildcard_indexes = self.get_wildcards_indexes(from_filter = filter_used)
+        filter_wildcard_indexes = filter_used.get_wildcards_indexes(wildcard_byte=self.get_wildcard_byte())
+
 
         for matched_idx in matches:
             self.bytelist[matched_idx] = filter_used.get_byte_it_represents()
