@@ -8,6 +8,7 @@ from arguments import parse_args_compress
 from classes.ConvFilter import ConvFilter
 from classes.Convpress import Convpress
 from classes.ConvGeneticAlgorithm import ConvGeneticAlgorithm
+from utils.banner import print_banner
 
 def main():
     """Uses genetic algorithms and convolutions to compress a file."""
@@ -21,15 +22,13 @@ def main():
 
     genetic_algorithm = ConvGeneticAlgorithm()
 
-    print('-------------------------')
-
     for _ in range(args.ps):
         filter_size = random.randrange(args.fsmin, args.fsmax+1)
         new_filter = ConvFilter(filter_size)
         new_filter.randomize_from_list(
-            unique_bytelist=convpress.get_unique_bytelist(),
-            wildcard_chance=0.33,
-            wildcard_byte=convpress.get_wildcard_byte()
+            unique_bytelist = convpress.get_unique_bytelist(),
+            wildcard_chance = 0.5,
+            wildcard_byte = convpress.get_wildcard_byte()
             )
         genetic_algorithm.add_filter(new_filter)
 
@@ -38,10 +37,13 @@ def main():
 
     for generation in range(generation_to_run):
 
+        print_banner(f"generation {generation}")
+        # genetic_algorithm.debug_population()
+
         convpress.convolve_all(filters_to_convolve = genetic_algorithm.get_population())
         generation_score = convpress.calculate_generation_score()
-        print(f"generation {generation} score: {generation_score}")
-        # cp.debug_scores()
+
+        print_banner(f"generation {generation} score: {generation_score}")
 
         genetic_algorithm.add_generation_score(generation_score)
         genetic_algorithm.save_population()
@@ -65,7 +67,11 @@ def main():
     genetic_algorithm.kill_duplicates()
 
     print("Compressing...")
-    convpress.compress(filters = genetic_algorithm.get_population())
+    filters_used = convpress.compress(filters = genetic_algorithm.get_population())
+
+    header = convpress.generate_header(filters_used)
+
+    convpress.output_file_from_bytelist(header)
 
 if __name__ == '__main__':
     main()

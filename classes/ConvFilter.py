@@ -1,3 +1,8 @@
+"""
+Class for holding the filter data
+and some operations
+"""
+
 from __future__ import annotations
 import random
 from typing import List
@@ -14,63 +19,91 @@ class ConvFilter:
         self.kernel = []
         for _ in range(size):
             self.kernel.append(b"")
-        self.size = size
+        self.byte_it_represents = b"\x00"
+
+    def set_byte_it_represents(self, byte_it_represents: bytes):
+        """Sets the byte that this filter represents"""
+        self.byte_it_represents = byte_it_represents
+
+    def get_byte_it_represents(self) -> bytes:
+        """Gets the byte that this filter represents"""
+        return self.byte_it_represents
 
     def randomize_from_list(self,unique_bytelist: list, wildcard_chance: float, wildcard_byte):
         """
         Randomize kernel bytes using a list of bytes,
-        from filter size and bigger,
-        all indexes (except both ends) have a wildcard_chance (between 0 and 1)
+        all indexes (except both ends) have a wildcard_chance
         of receiving a wildcard_byte
         """
-        self.kernel = []
+        new_kernel = []
         used_wildcard_once = False
-        for c in range(self.size):
+        for kernel_idx in range(self.get_size()):
             rand_idx = random.randrange(len(unique_bytelist))
             byte_to_use = unique_bytelist[rand_idx]
-            if c > 0 and c < (self.size - 1) and used_wildcard_once == False:
-                if random.uniform(0.0,1.0) < wildcard_chance:
-                    byte_to_use = wildcard_byte
-                    used_wildcard_once = True
-            self.kernel.append(byte_to_use)
-    
+
+            if used_wildcard_once is False:
+                if kernel_idx > 0 and kernel_idx < (self.get_size() - 1):
+                    if random.uniform(0.0,1.0) < wildcard_chance:
+                        byte_to_use = wildcard_byte
+                        used_wildcard_once = True
+
+            new_kernel.append(byte_to_use)
+
+        self.kernel = new_kernel
+
     def set_kernel_bytes_using_bytestring(self, bytestring: bytes):
+        """set kernel bytes using a bytestring"""
         self.kernel = bytestring_to_bytelist(bytestring)
-        assert len(self.kernel) == self.get_size()
 
     def crossover(self, other: ConvFilter):
-        
-        newFilter = ConvFilter(self.get_size())
-        newFilter.kernel = self.get_kernel().copy()
-        
-        randomSkip = 0
-        sizeDiff = abs(self.get_size() - other.get_size())
-        if sizeDiff > 0:
-            randomSkip = random.randrange(sizeDiff)
-        
-        smallerSize = self.get_size()
-        if other.get_size() < smallerSize:
-            smallerSize = other.get_size()
+        """
+        Crossover the information
+        between 2 filters
+        to create a new one
+        """
 
-        for c in range(smallerSize):
+        new_filter = ConvFilter(self.get_size())
+        new_filter.kernel = self.get_kernel().copy()
+
+        random_skip = 0
+        size_diff = abs(self.get_size() - other.get_size())
+        if size_diff > 0:
+            random_skip = random.randrange(size_diff)
+
+        smaller_size = self.get_size()
+        if other.get_size() < smaller_size:
+            smaller_size = other.get_size()
+
+        for idx in range(smaller_size):
             if random.choice([0,1]) == 1:
                 if self.get_size() > other.get_size():
-                    newFilter.kernel[randomSkip + c] = other.kernel[c]
+                    new_filter.kernel[random_skip + idx] = other.kernel[idx]
                 else:
-                    newFilter.kernel[c] = other.kernel[randomSkip + c]
+                    new_filter.kernel[idx] = other.kernel[random_skip + idx]
 
-        return newFilter
-    
+        return new_filter
+
     def get_kernel(self):
+        """get kernel's list of bytes"""
         return self.kernel
-    
+
     def get_size(self):
-        return self.size
-    
+        """get kernel's size"""
+        return len(self.kernel)
+
     def __eq__(self, other: ConvFilter):
         if self.get_size() != other.get_size():
             return False
-        for c in range(self.get_size()):
-            if self.kernel[c] != other.kernel[c]:
+        for kernel_idx in range(self.get_size()):
+            if self.kernel[kernel_idx] != other.kernel[kernel_idx]:
                 return False
         return True
+
+    def __str__(self):
+        output = f"size {self.get_size()}"
+        output += f" _\\x{self.get_byte_it_represents().hex()}_"
+        output += " _"
+        for kernel_byte in self.kernel:
+            output += f"\\x{kernel_byte.hex()}"
+        output += '_'
+        return output

@@ -9,11 +9,10 @@ It's slow and not recomended for any type of production use.
 
 Testes:
 
-```
-python3 -m tests.replace_matches_for_byte
-python3 -m tests.replace_bytes_for_kernel
-python3 -m tests.bytelist_bytestring_backandforth
-```
+`python -m unittest`
+
+---
 
 TODO:
-tests for the decompression process
+
+calcular footprint da combinação de filtros no header e usar isso pra calcular um score mais preciso

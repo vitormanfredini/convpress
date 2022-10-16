@@ -16,6 +16,7 @@ def main():
     convpress.set_output_file(args.output_file)
     print("Decompressing...")
     convpress.decompress()
+    convpress.output_file_from_bytelist()
 
 if __name__ == '__main__':
     main()

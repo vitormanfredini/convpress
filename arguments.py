@@ -10,10 +10,10 @@ def parse_args_compress():
     parser.add_argument('input_file',type=argparse.FileType('rb'))
     parser.add_argument('output_file',type=argparse.FileType('wb'))
     parser.add_argument('--ps', '--population_size', type=int,
-        default=50, help='max number of filters in each generation'
+        default=200, help='max number of filters in each generation'
         )
     parser.add_argument('--g', '--generations', type=int,
-        default=10, help='how many generations to run',
+        default=20, help='how many generations to run',
         )
     parser.add_argument('--fsmin', '--filter_size_min', type=int,
         default=2, help='minimum filter',

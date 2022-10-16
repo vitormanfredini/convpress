@@ -151,6 +151,7 @@ class Convpress:
             self.current_filters_matches.append(matches)
 
     def __convolve(self, filter_to_convolve: ConvFilter):
+
         kernel = filter_to_convolve.get_kernel()
         matches = []
         bytelist_idx = 0
@@ -179,6 +180,7 @@ class Convpress:
            and applying a penalty for overlapping with other filters,
         2- calculate average
         3- multiply by string coverage
+        TODO: maybe skip duplicates?
         """
         self.__generate_boolean_lists_of_filters_matches()
 
@@ -189,18 +191,18 @@ class Convpress:
                     indexes_repetition_count[idx] += 1
 
         self.current_filters_scores = []
-        score_sum = 0
         for boolean_list in self.current_filters_indexes_it_affects:
             score = self.calculate_one_score(
                 affected_by_filter = boolean_list,
                 bytes_repetition = indexes_repetition_count
                 )
-            score_sum =+ score
             self.current_filters_scores.append(score)
 
-        scores_average = score_sum / len(self.current_filters_indexes_it_affects)
-        final_score = scores_average * self.__calculate_string_coverage()
-        return final_score
+        return self.__calculate_string_coverage()
+
+        # scores_average = score_sum / len(self.current_filters_indexes_it_affects)
+        # final_score = scores_average * self.__calculate_string_coverage()
+        # return final_score
 
     def __generate_boolean_lists_of_filters_matches(self):
         """
@@ -252,8 +254,15 @@ class Convpress:
         score = 0
         for idx_affected, affected in enumerate(affected_by_filter):
             if affected:
-                repetition_penalty_division = 1.0 + bytes_repetition[idx_affected]
-                score += 1 / repetition_penalty_division
+                score_to_add = 1.0
+                score += self.apply_repetition_penalty(score_to_add, bytes_repetition[idx_affected])
+        return score
+
+    def apply_repetition_penalty(self, score: float, repetitions: int):
+        """apply penalty for repetition"""
+        if repetitions > 1:
+            ratio = (repetitions - 1) / (len(self.filters_in_use) - 1)
+            return score - (score * ratio)
         return score
 
     def get_current_filters_scores(self) -> list:
@@ -261,7 +270,7 @@ class Convpress:
         return self.current_filters_scores
 
     def debug_scores(self):
-        """prints scores"""
+        """prints all scores"""
         print('debug_scores')
         print(self.current_filters_scores)
 
@@ -270,13 +279,10 @@ class Convpress:
         Get a byte value that haven't been used yet
         """
 
-        if self.encoding == 'utf-8':
-            max_chars = sys.maxunicode
-        elif self.encoding == 'latin1':
-            max_chars = 256
-        else:
+        if self.encoding not in Convpress.get_supported_encodings():
             raise ValueError(f"Encoding {self.encoding} is not supported")
 
+        max_chars = 256
         for i in range(max_chars):
             byte = chr(i).encode(self.encoding)
             if len(byte) > 1:
@@ -290,17 +296,22 @@ class Convpress:
 
         raise RanOutOfPossibleBytes("All possible bytes are in use. Can't proceed.")
 
+    @staticmethod
+    def get_supported_encodings():
+        """get list of supported encodings"""
+        return ['utf-8', 'latin1']
+
     def get_min_matches_necessary(self):
         """Number of matches necessary to reduce the string more than it adds to it"""
         return 5
 
-    def generate_header(self, used_filters: List[ConvFilter], used_newbytes: list) -> bytes:
+    def generate_header(self, used_filters: List[ConvFilter]) -> bytes:
         """
-        Generate the header to necessary data for later decompression.
+        Generate the header with necessary data for later decompression.
         Returns a byte string like this: "cp$002003ima02pa02os"
         2 bytes to represent the convpress marker: "cp"
         + 1 byte to represent the wildcard
-        + 4 byte to represent the number of filters (from 0000 to 9999)
+        + 4 bytes to represent the number of filters (from 0000 to 9999)
         then for each filter
             + 1 byte to represent the byte used to replace the filter ocurrences
             + 2 bytes to represent the filter size (00 to 99)
@@ -310,18 +321,20 @@ class Convpress:
         header = "cp".encode(self.encoding)
         header += self.wildcard_byte
         header += f"{len(used_filters):04}".encode(self.encoding)
-        for idx, filter_to_write in enumerate(used_filters):
-            header += used_newbytes[idx]
+        for filter_to_write in used_filters:
+            header += filter_to_write.get_byte_it_represents()
             header += f"{filter_to_write.get_size():02}".encode(self.encoding)
             for byte in filter_to_write.get_kernel():
                 header += byte
         return header
 
     def compress(self, filters: List[ConvFilter]) -> None:
-        """process bytelist replacing filter matches with new bytes representing the filter"""
+        """
+        Convolve filters and replace matches with new bytes representing the filter.
+        Returns the filters that were actually used.
+        """
 
         used_filters: List[ConvFilter] = []
-        used_newbytes: List[bytes] = []
 
         for filter_to_convolve in filters:
 
@@ -331,37 +344,32 @@ class Convpress:
                 continue
 
             newbyte = self.get_available_byte()
+            filter_to_convolve.set_byte_it_represents(newbyte)
 
             self.replace_matches_for_newbyte(
                 matches = matches,
-                newbyte = newbyte,
                 filter_used = filter_to_convolve
                 )
 
             used_filters.append(filter_to_convolve)
-            used_newbytes.append(newbyte)
 
-        header = self.generate_header(used_filters, used_newbytes)
+        return used_filters
 
-        self.output_file.write(header)
-        for byte in self.bytelist:
-            self.output_file.write(byte)
-        self.output_file.close()
-
-    def replace_matches_for_newbyte(self, matches, newbyte, filter_used):
+    def replace_matches_for_newbyte(self, matches: List[int], filter_used: ConvFilter):
         """
-        Replaces the bytes where the matches happened
+        For every match, replace the first byte
         for the byte that represents the filter
+        and remove the rest from the array
         """
 
         filter_wildcard_indexes = self.get_wildcards_indexes(from_filter = filter_used)
 
-        for pos in matches:
-            self.bytelist[pos] = newbyte
+        for matched_idx in matches:
+            self.bytelist[matched_idx] = filter_used.get_byte_it_represents()
 
         indexes_to_pop = []
         for byte_idx, byte in enumerate(self.bytelist):
-            if byte == newbyte:
+            if byte == filter_used.get_byte_it_represents():
                 for filter_idx in range(filter_used.get_size()):
                     if filter_idx > 0 and filter_idx not in filter_wildcard_indexes:
                         indexes_to_pop.append(byte_idx+filter_idx)
@@ -374,7 +382,6 @@ class Convpress:
         Decompress the bytelist by replacing the bytes
         for its corresponding filter's kernel
         """
-
         for idx, byte in enumerate(self.bytelist):
             for byte_decompress_idx, byte_to_decompress in enumerate(self.bytes_to_decompress):
                 if byte != byte_to_decompress:
@@ -382,8 +389,14 @@ class Convpress:
 
                 self.replace_byte_for_kernel(idx, self.decompress_filters[byte_decompress_idx])
 
-        for byte_to_decompress in self.bytelist:
-            self.output_file.write(byte_to_decompress)
+    def output_file_from_bytelist(self, header: bytes = None) -> None:
+        """Saves the current bytelist to a file."""
+
+        if header is not None:
+            self.output_file.write(header)
+
+        for byte in self.bytelist:
+            self.output_file.write(byte)
         self.output_file.close()
 
     def replace_byte_for_kernel(self, byte_index: int, filter_for_decompression: ConvFilter):

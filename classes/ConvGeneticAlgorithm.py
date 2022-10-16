@@ -4,6 +4,7 @@ Genetic algorhithm for finding the best combination of filters for compressing a
 import random
 from typing import List
 from classes.ConvFilter import ConvFilter
+from utils.banner import print_banner
 
 class ConvGeneticAlgorithm:
     """Genetic Algorhithm"""
@@ -27,14 +28,12 @@ class ConvGeneticAlgorithm:
         """get list of all filters in the current population"""
         return self.population
 
-    def debug_filters(self):
-        """prints all filters' kernels"""
+    def debug_population(self):
+        """prints all filters' kernels in the current population"""
 
-        for filter_to_debug in self.population:
-            kernel = filter_to_debug.get_kernel()
-            for kernel_byte in kernel:
-                print(kernel_byte,end=' ')
-            print()
+        print_banner("population debug")
+        for idx, filter_to_debug in enumerate(self.population):
+            print(f"idx {idx}: {filter_to_debug}")
 
     def get_generation(self, generation: int) -> List[ConvFilter]:
         """get specific generation list of filters"""
