@@ -9,6 +9,8 @@ from typing import List
 from classes.ConvFilter import ConvFilter
 
 from utils.bytes_operations import bytestring_to_bytelist
+from utils.custom_map import map_easein
+
 
 class RanOutOfPossibleBytes(Exception):
     """
@@ -16,8 +18,10 @@ class RanOutOfPossibleBytes(Exception):
     that can be represented by only one byte
     """
 
+
 class UnexpectedHeaderFormat(Exception):
     """Error for when the header isn't valid"""
+
 
 @dataclass()
 class Convpress:
@@ -39,7 +43,8 @@ class Convpress:
     current_filters_matches: List[List[int]] = field(default_factory=list)
     bytes_to_decompress: List[bytes] = field(default_factory=list)
     decompress_filters: List[ConvFilter] = field(default_factory=list)
-    current_filters_indexes_it_affects: List[List[bool]] = field(default_factory=list)
+    current_filters_indexes_it_affects: List[List[bool]] = field(
+        default_factory=list)
     filters_in_use: List[ConvFilter] = field(default_factory=list)
     encoding: str = "latin1"
 
@@ -89,7 +94,8 @@ class Convpress:
         try:
             cp_marker = self.input_file.read(2)
             if cp_marker != b'cp':
-                raise UnexpectedHeaderFormat("First two bytes aren't the correct marker.")
+                raise UnexpectedHeaderFormat(
+                    "First two bytes aren't the correct marker.")
 
             self.wildcard_byte = self.input_file.read(1)
 
@@ -116,7 +122,6 @@ class Convpress:
             byte = self.input_file.read(1)
         self.input_file.close()
 
-
     def load_file(self, filename: TextIOWrapper):
         """loads a file for compressing it"""
 
@@ -142,7 +147,7 @@ class Convpress:
             self.current_filters_matches.append(matches)
 
     def convolve(self, filter_to_convolve: ConvFilter):
-
+        """Convolve filter and return perfect matches"""
         kernel = filter_to_convolve.get_kernel()
         matches = []
         bytelist_idx = 0
@@ -166,16 +171,12 @@ class Convpress:
     def calculate_generation_score(self):
         """
         Calculate the generation score
-        by calculating the
-        1- scores of individual filters (number of matches)
-           and applying a penalty for overlapping with other filters,
-        2- calculate average
-        3- multiply by string coverage
-        TODO: maybe skip duplicates?
+        by calculating the percentage of the input file it covers
         """
         self.__generate_boolean_lists_of_filters_matches()
 
-        indexes_repetition_count: List[int] = [0 for i in range(len(self.bytelist))]
+        indexes_repetition_count: List[int] = [
+            0 for i in range(len(self.bytelist))]
         for boolean_list in self.current_filters_indexes_it_affects:
             for idx, item in enumerate(boolean_list):
                 if item:
@@ -184,16 +185,12 @@ class Convpress:
         self.current_filters_scores = []
         for boolean_list in self.current_filters_indexes_it_affects:
             score = self.calculate_one_score(
-                affected_by_filter = boolean_list,
-                bytes_repetition = indexes_repetition_count
-                )
+                affected_by_filter=boolean_list,
+                bytes_repetition=indexes_repetition_count
+            )
             self.current_filters_scores.append(score)
 
         return self.__calculate_string_coverage()
-
-        # scores_average = score_sum / len(self.current_filters_indexes_it_affects)
-        # final_score = scores_average * self.__calculate_string_coverage()
-        # return final_score
 
     def __generate_boolean_lists_of_filters_matches(self):
         """
@@ -207,14 +204,16 @@ class Convpress:
         for idx_matches, filter_matches in enumerate(self.current_filters_matches):
 
             filter_to_read = self.filters_in_use[idx_matches]
-            boolean_indexes_it_affects = [False for i in range(len(self.bytelist))]
+            boolean_indexes_it_affects = [
+                False for i in range(len(self.bytelist))]
 
             for match_index in filter_matches:
                 for k in range(filter_to_read.get_size()):
                     if filter_to_read.get_kernel()[k] != self.wildcard_byte:
                         boolean_indexes_it_affects[match_index+k] = True
 
-            self.current_filters_indexes_it_affects.append(boolean_indexes_it_affects)
+            self.current_filters_indexes_it_affects.append(
+                boolean_indexes_it_affects)
 
     def __calculate_string_coverage(self) -> float:
 
@@ -233,7 +232,6 @@ class Convpress:
 
         return count / len(self.bytelist)
 
-
     def calculate_one_score(self, affected_by_filter: List[bool], bytes_repetition: List[int]):
         """
         Calculate score for one filter
@@ -245,15 +243,17 @@ class Convpress:
         score = 0
         for idx_affected, affected in enumerate(affected_by_filter):
             if affected:
-                score_to_add = 1.0
-                score += self.apply_repetition_penalty(score_to_add, bytes_repetition[idx_affected])
+                score += self.apply_repetition_penalty(
+                    1.0,
+                    bytes_repetition[idx_affected]
+                )
         return score
 
     def apply_repetition_penalty(self, score: float, repetitions: int):
         """apply penalty for repetition"""
         if repetitions > 1:
             ratio = (repetitions - 1) / (len(self.filters_in_use) - 1)
-            return score - (score * ratio)
+            return score - (score * map_easein(ratio))
         return score
 
     def get_current_filters_scores(self) -> list:
@@ -285,7 +285,8 @@ class Convpress:
             self.adittionalbytelist.append(byte)
             return byte
 
-        raise RanOutOfPossibleBytes("All possible bytes are in use. Can't proceed.")
+        raise RanOutOfPossibleBytes(
+            "All possible bytes are in use. Can't proceed.")
 
     @staticmethod
     def get_supported_encodings():
@@ -338,9 +339,9 @@ class Convpress:
             filter_to_convolve.set_byte_it_represents(newbyte)
 
             self.replace_matches_for_newbyte(
-                matches = matches,
-                filter_used = filter_to_convolve
-                )
+                matches=matches,
+                filter_used=filter_to_convolve
+            )
 
             used_filters.append(filter_to_convolve)
 
@@ -353,8 +354,8 @@ class Convpress:
         and remove the rest from the array
         """
 
-        filter_wildcard_indexes = filter_used.get_wildcards_indexes(wildcard_byte=self.get_wildcard_byte())
-
+        filter_wildcard_indexes = filter_used.get_wildcards_indexes(
+            wildcard_byte=self.get_wildcard_byte())
 
         for matched_idx in matches:
             self.bytelist[matched_idx] = filter_used.get_byte_it_represents()
@@ -379,7 +380,8 @@ class Convpress:
                 if byte != byte_to_decompress:
                     continue
 
-                self.replace_byte_for_kernel(idx, self.decompress_filters[byte_decompress_idx])
+                self.replace_byte_for_kernel(
+                    idx, self.decompress_filters[byte_decompress_idx])
 
     def output_file_from_bytelist(self, header: bytes = None) -> None:
         """Saves the current bytelist to a file."""

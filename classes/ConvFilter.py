@@ -9,12 +9,13 @@ from typing import List
 
 from utils.bytes_operations import bytestring_to_bytelist
 
+
 class ConvFilter:
     """
     Kernel/filter for sequences of bytes
     """
 
-    def __init__(self,size: int):
+    def __init__(self, size: int):
         self.kernel: bytes = List[bytes]
         self.kernel = []
         for _ in range(size):
@@ -29,7 +30,7 @@ class ConvFilter:
         """Gets the byte that this filter represents"""
         return self.byte_it_represents
 
-    def randomize_from_list(self,unique_bytelist: list, wildcard_chance: float, wildcard_byte):
+    def randomize_from_list(self, unique_bytelist: list, wildcard_chance: float, wildcard_byte):
         """
         Randomize kernel bytes using a list of bytes,
         all indexes (except both ends) have a wildcard_chance
@@ -43,7 +44,7 @@ class ConvFilter:
 
             if used_wildcard_once is False:
                 if kernel_idx > 0 and kernel_idx < (self.get_size() - 1):
-                    if random.uniform(0.0,1.0) < wildcard_chance:
+                    if random.uniform(0.0, 1.0) < wildcard_chance:
                         byte_to_use = wildcard_byte
                         used_wildcard_once = True
 
@@ -75,7 +76,7 @@ class ConvFilter:
             smaller_size = other.get_size()
 
         for idx in range(smaller_size):
-            if random.choice([0,1]) == 1:
+            if random.choice([0, 1]) == 1:
                 if self.get_size() > other.get_size():
                     new_filter.kernel[random_skip + idx] = other.kernel[idx]
                 else:
@@ -98,6 +99,11 @@ class ConvFilter:
     def get_size(self):
         """get kernel's size"""
         return len(self.kernel)
+
+    def calculate_footprint_in_bytes(self):
+        """calculate how many bytes this filter will use in the file header"""
+        extrabytes = 3  # see Convpress.generate_header()
+        return self.get_size() + extrabytes
 
     def __eq__(self, other: ConvFilter):
         if self.get_size() != other.get_size():

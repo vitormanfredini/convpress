@@ -3,12 +3,16 @@
 Programa de compressão de arquivos.
 """
 
+import math
 import random
+import itertools
+import sys
 from arguments import parse_args_compress
 from classes.ConvFilter import ConvFilter
 from classes.Convpress import Convpress
 from classes.ConvGeneticAlgorithm import ConvGeneticAlgorithm
 from utils.banner import print_banner
+
 
 def main():
     """Uses genetic algorithms and convolutions to compress a file."""
@@ -26,10 +30,10 @@ def main():
         filter_size = random.randrange(args.fsmin, args.fsmax+1)
         new_filter = ConvFilter(filter_size)
         new_filter.randomize_from_list(
-            unique_bytelist = convpress.get_unique_bytelist(),
-            wildcard_chance = 0.5,
-            wildcard_byte = convpress.get_wildcard_byte()
-            )
+            unique_bytelist=convpress.get_unique_bytelist(),
+            wildcard_chance=0.5,
+            wildcard_byte=convpress.get_wildcard_byte()
+        )
         genetic_algorithm.add_filter(new_filter)
 
     genetic_algorithm.set_mutation_chance(args.mcp)
@@ -40,7 +44,8 @@ def main():
         print_banner(f"generation {generation}")
         # genetic_algorithm.debug_population()
 
-        convpress.convolve_all(filters_to_convolve = genetic_algorithm.get_population())
+        convpress.convolve_all(
+            filters_to_convolve=genetic_algorithm.get_population())
         generation_score = convpress.calculate_generation_score()
 
         print(f"score: {generation_score}")
@@ -54,10 +59,11 @@ def main():
         genetic_algorithm.natural_selection(
             chance_of_survival=0.5,
             scores=convpress.get_current_filters_scores()
-            )
+        )
 
-        genetic_algorithm.reproduce(max_filters = args.ps)
-        genetic_algorithm.mutation(mutation_byte_list = convpress.get_unique_bytelist())
+        genetic_algorithm.reproduce(max_filters=args.ps)
+        genetic_algorithm.mutation(
+            mutation_byte_list=convpress.get_unique_bytelist())
 
     print('-------------------------')
     generation_to_use = genetic_algorithm.get_generation_with_best_score()
@@ -67,11 +73,13 @@ def main():
     genetic_algorithm.kill_duplicates()
 
     print("Compressing...")
-    filters_used = convpress.compress(filters = genetic_algorithm.get_population())
+    filters_used = convpress.compress(
+        filters=genetic_algorithm.get_population())
 
     header = convpress.generate_header(filters_used)
 
     convpress.output_file_from_bytelist(header)
+
 
 if __name__ == '__main__':
     main()
