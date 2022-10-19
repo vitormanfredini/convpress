@@ -252,8 +252,18 @@ class Convpress:
     def apply_repetition_penalty(self, score: float, repetitions: int):
         """apply penalty for repetition"""
         if repetitions > 1:
+            # worst penalty:
+            # divide score by number of repetitions
+            # return score / repetitions
+
+            # linear proportional penalty:
+            # score will be the same for 1 repetition
+            # and zero for max repetitions
             ratio = (repetitions - 1) / (len(self.filters_in_use) - 1)
-            return score - (score * map_easein(ratio))
+            return score - (score * ratio)
+
+            # penalizes only those with many repetitions
+            # return score - (score * map_easein(ratio))
         return score
 
     def get_current_filters_scores(self) -> list:
@@ -295,7 +305,7 @@ class Convpress:
 
     def get_min_matches_necessary(self):
         """Number of matches necessary to reduce the string more than it adds to it"""
-        return 5
+        return 20
 
     def generate_header(self, used_filters: List[ConvFilter]) -> bytes:
         """
@@ -320,20 +330,23 @@ class Convpress:
                 header += byte
         return header
 
-    def compress(self, filters: List[ConvFilter]) -> None:
+    def compress(self, filters_to_use: List[ConvFilter]) -> None:
         """
         Convolve filters and replace matches with new bytes representing the filter.
         Returns the filters that were actually used.
         """
 
-        used_filters: List[ConvFilter] = []
+        used_actually_used: List[ConvFilter] = []
 
-        for filter_to_convolve in filters:
+        for filter_to_convolve in filters_to_use:
 
             matches = self.convolve(filter_to_convolve)
+            print(f"filter {filter_to_convolve} ... matches: {len(matches)})")
 
             if len(matches) < self.get_min_matches_necessary():
                 continue
+
+            print("passed")
 
             newbyte = self.get_available_byte()
             filter_to_convolve.set_byte_it_represents(newbyte)
@@ -343,9 +356,9 @@ class Convpress:
                 filter_used=filter_to_convolve
             )
 
-            used_filters.append(filter_to_convolve)
+            used_actually_used.append(filter_to_convolve)
 
-        return used_filters
+        return used_actually_used
 
     def replace_matches_for_newbyte(self, matches: List[int], filter_used: ConvFilter):
         """

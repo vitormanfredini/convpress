@@ -64,19 +64,25 @@ def main():
         genetic_algorithm.reproduce(max_filters=args.ps)
         genetic_algorithm.mutation(
             mutation_byte_list=convpress.get_unique_bytelist())
+        genetic_algorithm.wildcard_disease(
+            wildcard_byte=convpress.get_wildcard_byte())
 
     print('-------------------------')
     generation_to_use = genetic_algorithm.get_generation_with_best_score()
     print(f"best generation: {generation_to_use}")
 
     genetic_algorithm.load_population_from_history(generation_to_use)
-    genetic_algorithm.kill_duplicates()
+    genetic_algorithm.remove_duplicates()
+
+    genetic_algorithm.debug_population()
 
     print("Compressing...")
-    filters_used = convpress.compress(
-        filters=genetic_algorithm.get_population())
+    filters_actually_used = convpress.compress(
+        filters_to_use=genetic_algorithm.get_population())
 
-    header = convpress.generate_header(filters_used)
+    genetic_algorithm.debug_population(filters_actually_used)
+
+    header = convpress.generate_header(filters_actually_used)
 
     convpress.output_file_from_bytelist(header)
 

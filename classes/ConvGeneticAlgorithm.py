@@ -6,13 +6,14 @@ from typing import List
 from classes.ConvFilter import ConvFilter
 from utils.banner import print_banner
 
+
 class ConvGeneticAlgorithm:
     """Genetic Algorhithm"""
 
     def __init__(self):
-        self.population: ConvFilter = []
+        self.population: List[ConvFilter] = []
         self.mutation_chance = 0.05
-        self.generations: List[ConvFilter] = []
+        self.generations: List[List[ConvFilter]] = []
         self.history = []
         self.generation_scores = []
 
@@ -28,11 +29,19 @@ class ConvGeneticAlgorithm:
         """get list of all filters in the current population"""
         return self.population
 
-    def debug_population(self):
-        """prints all filters' kernels in the current population"""
+    def debug_population(self, list_of_filters: list = None):
+        """
+        prints all filters' kernels
+        in the list of filters passed.
+        if no argument is passed,
+        then use current population.
+        """
+
+        if list_of_filters is None:
+            list_of_filters = self.population
 
         print_banner("population debug")
-        for idx, filter_to_debug in enumerate(self.population):
+        for idx, filter_to_debug in enumerate(list_of_filters):
             print(f"idx {idx}: {filter_to_debug}")
 
     def get_generation(self, generation: int) -> List[ConvFilter]:
@@ -43,7 +52,8 @@ class ConvGeneticAlgorithm:
         """Order population by individual score and remove those below chance of survival"""
 
         max_stay_alive = int(len(scores) * chance_of_survival)
-        self.population = [x for _, x in sorted(zip(scores, self.population), key=lambda pair: pair[0])][-max_stay_alive:]
+        self.population = [x for _, x in sorted(
+            zip(scores, self.population), key=lambda pair: pair[0])][-max_stay_alive:]
 
     def save_population(self):
         """save current population of filters in the history"""
@@ -98,10 +108,24 @@ class ConvGeneticAlgorithm:
 
         self.population = new_filters
 
-    def kill_duplicates(self):
+    def remove_duplicates(self):
         """removes duplicates from the current population"""
+
         without_duplicates = []
         for filter_to_check in self.population:
             if filter_to_check not in without_duplicates:
                 without_duplicates.append(filter_to_check)
         self.population = without_duplicates
+
+    def wildcard_disease(self, wildcard_byte: bytes):
+        """removes all filters with a wildcard_byte as first or last byte in the kernel"""
+
+        survivors = []
+        for filter_to_check in self.population:
+            kernel = filter_to_check.get_kernel()
+            if kernel[0] == wildcard_byte:
+                continue
+            if kernel[filter_to_check.get_size()-1] == wildcard_byte:
+                continue
+            survivors.append(filter_to_check)
+        self.population = survivors
