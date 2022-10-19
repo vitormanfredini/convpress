@@ -341,12 +341,9 @@ class Convpress:
         for filter_to_convolve in filters_to_use:
 
             matches = self.convolve(filter_to_convolve)
-            print(f"filter {filter_to_convolve} ... matches: {len(matches)})")
 
             if len(matches) < self.get_min_matches_necessary():
                 continue
-
-            print("passed")
 
             newbyte = self.get_available_byte()
             filter_to_convolve.set_byte_it_represents(newbyte)
