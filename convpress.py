@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
 """
-Programa de compressão de arquivos.
+File compression using convolutions and a genetic algorithm the find the best filters.
 """
 
-import math
 import random
-import itertools
-import sys
 from arguments import parse_args_compress
 from classes.ConvFilter import ConvFilter
-from classes.Convpress import Convpress
+from classes.Convpress import Convpress, RepetitionPenaltyType
 from classes.ConvGeneticAlgorithm import ConvGeneticAlgorithm
-from utils.banner import print_banner
 
 
 def main():
@@ -21,8 +17,9 @@ def main():
 
     convpress = Convpress()
     print(f"Loading: {args.input_file.name}")
-    convpress.load_file(args.input_file)
-    convpress.set_output_file(args.output_file)
+    convpress.load_file(filename=args.input_file)
+    convpress.set_output_file(output_file=args.output_file)
+    convpress.set_repetition_penalty_type(RepetitionPenaltyType.DIVIDE_BY_NUMBER_OF_REPETITIONS)
 
     genetic_algorithm = ConvGeneticAlgorithm()
 
@@ -36,12 +33,12 @@ def main():
         )
         genetic_algorithm.add_filter(new_filter)
 
-    genetic_algorithm.set_mutation_chance(args.mcp)
+    genetic_algorithm.set_mutation_chance(percentage=args.mcp)
     generation_to_run = args.g
 
     for generation in range(generation_to_run):
 
-        print_banner(f"generation {generation}")
+        print(f"generation {generation}")
         # genetic_algorithm.debug_population()
 
         convpress.convolve_all(
@@ -50,14 +47,14 @@ def main():
 
         print(f"score: {generation_score}")
 
-        genetic_algorithm.add_generation_score(generation_score)
+        genetic_algorithm.add_generation_score(score=generation_score)
         genetic_algorithm.save_population()
 
         if generation >= generation_to_run - 1:
             break
 
         genetic_algorithm.natural_selection(
-            chance_of_survival=0.5,
+            chance_of_survival=args.scp,
             scores=convpress.get_current_filters_scores()
         )
 
@@ -68,23 +65,24 @@ def main():
             wildcard_byte=convpress.get_wildcard_byte())
 
     print('-------------------------')
-    generation_to_use = genetic_algorithm.get_generation_with_best_score()
-    print(f"best generation: {generation_to_use}")
+    generation_with_best_score = genetic_algorithm.get_generation_with_best_score()
+    print(f"best generation: {generation_with_best_score}")
 
-    genetic_algorithm.load_population_from_history(generation_to_use)
+    genetic_algorithm.load_population_from_history(
+        generation=generation_with_best_score)
     genetic_algorithm.remove_duplicates()
 
-    genetic_algorithm.debug_population()
+    # genetic_algorithm.debug_population()
 
     print("Compressing...")
     filters_actually_used = convpress.compress(
         filters_to_use=genetic_algorithm.get_population())
 
-    genetic_algorithm.debug_population(filters_actually_used)
+    genetic_algorithm.debug_population(list_of_filters=filters_actually_used)
 
-    header = convpress.generate_header(filters_actually_used)
+    header = convpress.generate_header(used_filters=filters_actually_used)
 
-    convpress.output_file_from_bytelist(header)
+    convpress.output_file_from_bytelist(header=header)
 
 
 if __name__ == '__main__':

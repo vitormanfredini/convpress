@@ -2,6 +2,7 @@
 Convpress module
 """
 from dataclasses import dataclass, field
+from enum import Enum, auto
 from io import TextIOWrapper
 import sys
 
@@ -21,6 +22,16 @@ class RanOutOfPossibleBytes(Exception):
 
 class UnexpectedHeaderFormat(Exception):
     """Error for when the header isn't valid"""
+
+
+class RepetitionPenaltyType(Enum):
+    """
+    Types of penalty that can be applied
+    to scores of filters with overlapping coverage
+    """
+    DIVIDE_BY_NUMBER_OF_REPETITIONS = auto()  # rigorous
+    LINEARLY_PROPORTIONAL = auto()  # linear
+    PERMISSIVE = auto()  # permissive
 
 
 @dataclass()
@@ -47,6 +58,7 @@ class Convpress:
         default_factory=list)
     filters_in_use: List[ConvFilter] = field(default_factory=list)
     encoding: str = "latin1"
+    penalty_type: RepetitionPenaltyType = RepetitionPenaltyType.DIVIDE_BY_NUMBER_OF_REPETITIONS
 
     def reset(self):
         """resets everything"""
@@ -252,19 +264,26 @@ class Convpress:
     def apply_repetition_penalty(self, score: float, repetitions: int):
         """apply penalty for repetition"""
         if repetitions > 1:
-            # worst penalty:
-            # divide score by number of repetitions
-            # return score / repetitions
 
-            # linear proportional penalty:
-            # score will be the same for 1 repetition
-            # and zero for max repetitions
-            ratio = (repetitions - 1) / (len(self.filters_in_use) - 1)
-            return score - (score * ratio)
+            possible_types = [item.value for item in RepetitionPenaltyType]
+            if self.penalty_type.value not in possible_types:
+                raise ValueError("Invalid penalty_type.")
 
-            # penalizes only those with many repetitions
-            # return score - (score * map_easein(ratio))
+            if self.penalty_type is RepetitionPenaltyType.DIVIDE_BY_NUMBER_OF_REPETITIONS:
+                return score / repetitions
+
+            if self.penalty_type is RepetitionPenaltyType.LINEARLY_PROPORTIONAL:
+                ratio = (repetitions - 1) / (len(self.filters_in_use) - 1)
+                return score - (score * ratio)
+
+            if self.penalty_type is RepetitionPenaltyType.PERMISSIVE:
+                return score - (score * map_easein(ratio))
+
         return score
+
+    def set_repetition_penalty_type(self, penalty_type: RepetitionPenaltyType):
+        """set the repetition penalty type"""
+        self.penalty_type = penalty_type
 
     def get_current_filters_scores(self) -> list:
         """get list of convolved filters scores"""
