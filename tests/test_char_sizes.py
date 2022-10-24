@@ -12,7 +12,7 @@ class Testing(unittest.TestCase):
 
     def test_all_latin1_chars_must_be_single_byte(self):
         """
-        Test the first 256 chars in the latin1 encoding
+        Test the first 256 chars in the default encoding
         and check if all of them
         can be represented by 1 byte only
         """

@@ -4,7 +4,6 @@ Convpress module
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from io import TextIOWrapper
-import sys
 
 from typing import List
 from classes.ConvFilter import ConvFilter
@@ -54,8 +53,7 @@ class Convpress:
     current_filters_matches: List[List[int]] = field(default_factory=list)
     bytes_to_decompress: List[bytes] = field(default_factory=list)
     decompress_filters: List[ConvFilter] = field(default_factory=list)
-    current_filters_indexes_it_affects: List[List[bool]] = field(
-        default_factory=list)
+    indexes_affected_by_filters: List[List[bool]] = field(default_factory=list)
     filters_in_use: List[ConvFilter] = field(default_factory=list)
     encoding: str = "latin1"
     penalty_type: RepetitionPenaltyType = RepetitionPenaltyType.DIVIDE_BY_NUMBER_OF_REPETITIONS
@@ -70,7 +68,7 @@ class Convpress:
         self.wildcard_byte = None
         self.current_filters_scores = []
         self.current_filters_matches = []
-        self.current_filters_indexes_it_affects = []
+        self.indexes_affected_by_filters = []
         self.decompress_filters = []
         self.bytes_to_decompress = []
         self.filters_in_use = []
@@ -148,7 +146,7 @@ class Convpress:
             byte = self.input_file.read(1)
         self.input_file.close()
 
-        self.wildcard_byte = self.get_available_byte()
+        self.wildcard_byte = self.get_next_available_byte()
 
     def convolve_all(self, filters_to_convolve: List[ConvFilter]):
         """convolve all filters and save their matches"""
@@ -189,13 +187,13 @@ class Convpress:
 
         indexes_repetition_count: List[int] = [
             0 for i in range(len(self.bytelist))]
-        for boolean_list in self.current_filters_indexes_it_affects:
+        for boolean_list in self.indexes_affected_by_filters:
             for idx, item in enumerate(boolean_list):
                 if item:
                     indexes_repetition_count[idx] += 1
 
         self.current_filters_scores = []
-        for boolean_list in self.current_filters_indexes_it_affects:
+        for boolean_list in self.indexes_affected_by_filters:
             score = self.calculate_one_score(
                 affected_by_filter=boolean_list,
                 bytes_repetition=indexes_repetition_count
@@ -212,7 +210,7 @@ class Convpress:
         or false where it didn't
         """
 
-        self.current_filters_indexes_it_affects = []
+        self.indexes_affected_by_filters = []
         for idx_matches, filter_matches in enumerate(self.current_filters_matches):
 
             filter_to_read = self.filters_in_use[idx_matches]
@@ -224,7 +222,7 @@ class Convpress:
                     if filter_to_read.get_kernel()[k] != self.wildcard_byte:
                         boolean_indexes_it_affects[match_index+k] = True
 
-            self.current_filters_indexes_it_affects.append(
+            self.indexes_affected_by_filters.append(
                 boolean_indexes_it_affects)
 
     def __calculate_string_coverage(self) -> float:
@@ -232,10 +230,10 @@ class Convpress:
         boolean_unique_matches = [False for i in range(len(self.bytelist))]
         count = 0
 
-        if len(self.current_filters_indexes_it_affects) == 0:
+        if len(self.indexes_affected_by_filters) == 0:
             self.__generate_boolean_lists_of_filters_matches()
 
-        for bool_match_list in self.current_filters_indexes_it_affects:
+        for bool_match_list in self.indexes_affected_by_filters:
             for idx, bool_affected in enumerate(bool_match_list):
                 if bool_affected:
                     if not boolean_unique_matches[idx]:
@@ -294,7 +292,7 @@ class Convpress:
         print('debug_scores')
         print(self.current_filters_scores)
 
-    def get_available_byte(self):
+    def get_next_available_byte(self):
         """
         Get a byte value that haven't been used yet
         """
@@ -320,7 +318,7 @@ class Convpress:
     @staticmethod
     def get_supported_encodings():
         """get list of supported encodings"""
-        return ['utf-8', 'latin1']
+        return ['utf-8', 'latin1', 'cp1252']
 
     def get_min_matches_necessary(self):
         """Number of matches necessary to reduce the string more than it adds to it"""
@@ -364,7 +362,7 @@ class Convpress:
             if len(matches) < self.get_min_matches_necessary():
                 continue
 
-            newbyte = self.get_available_byte()
+            newbyte = self.get_next_available_byte()
             filter_to_convolve.set_byte_it_represents(newbyte)
 
             self.replace_matches_for_newbyte(
