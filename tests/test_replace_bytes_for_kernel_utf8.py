@@ -1,8 +1,10 @@
 """
-Test to check if bytes are being replaced by the filters correctly
+Test to check if bytes are being replaced correctly by the filters.
+Enconding: utf-8
 """
 import unittest
 import sys
+from classes.ByteGenerator import ByteGenerator
 from classes.ConvFilter import ConvFilter
 from classes.Convpress import Convpress
 from utils.bytes_operations import bytelist_to_bytestring
@@ -17,7 +19,8 @@ class Testing(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        self.convpress = Convpress()
+        byte_generator = ByteGenerator("utf-8")
+        self.convpress = Convpress(byte_generator)
         return super().setUp()
 
     def test_replace_byte_by_filter_length_2(self):
@@ -33,7 +36,7 @@ class Testing(unittest.TestCase):
             filter_for_decompression = filter_to_use
             )
         bytestring_should_be = b"\xfd\xe8r\xc9\xfd\xe8?\xfda\xe8\xc9\xa4\xb9a\xfd\xe8\xfd7\xa4"
-        self.assertTrue(bytelist_to_bytestring(self.convpress.bytelist) == bytestring_should_be)
+        self.assertTrue(bytelist_to_bytestring(self.convpress.byte_list) == bytestring_should_be)
 
     def test_replace_filter_length_3(self):
         """Test with length 3 filter"""
@@ -48,7 +51,7 @@ class Testing(unittest.TestCase):
             filter_for_decompression = filter_to_use
             )
         bytestring_should_be = b"\xfd\xe8\xe8\xc9\xa4\xc9\x1e?\xfda\xe8\xc9\xa4dw\xb9a\xfd\xe8\xfd7\xa4"
-        self.assertTrue(bytelist_to_bytestring(self.convpress.bytelist) == bytestring_should_be)
+        self.assertTrue(bytelist_to_bytestring(self.convpress.byte_list) == bytestring_should_be)
 
     def test_replace_filter_length_3_with_wildcard(self):
         """Test with length 3 filter with wildcard"""
@@ -64,11 +67,9 @@ class Testing(unittest.TestCase):
             filter_for_decompression = filter_to_use
             )
         bytestring_should_be = b"\xfd\xe8\x55\xa4\x1e?\xfda\xe8\xc9\xe8\xe8\xa4\xa4\xfd\xe8\xfd7\xa4"
-        self.assertTrue(bytelist_to_bytestring(self.convpress.bytelist) == bytestring_should_be)
+        self.assertTrue(bytelist_to_bytestring(self.convpress.byte_list) == bytestring_should_be)
 
 if __name__ == '__main__':
-
-    cp = Convpress()
 
     # roda testes
     unittest.main()

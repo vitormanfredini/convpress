@@ -4,6 +4,7 @@ Program to decompress a file that was compressed by convpress.
 """
 
 from arguments import parse_args_decompress
+from classes.ByteGenerator import ByteGenerator
 from classes.Convpress import Convpress
 
 def main():
@@ -11,11 +12,16 @@ def main():
 
     args = parse_args_decompress()
 
-    convpress = Convpress()
+    byte_generator = ByteGenerator("latin1")
+    convpress = Convpress(byte_generator)
+
     convpress.load_file_for_decompression(args.input_file)
+
     convpress.set_output_file(args.output_file)
+
     print("Decompressing...")
     convpress.decompress()
+
     convpress.output_file_from_bytelist()
 
 if __name__ == '__main__':

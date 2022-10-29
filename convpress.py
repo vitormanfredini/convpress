@@ -5,6 +5,7 @@ File compression using convolutions and a genetic algorithm the find the best fi
 
 import random
 from arguments import parse_args_compress
+from classes.ByteGenerator import ByteGenerator
 from classes.ConvFilter import ConvFilter
 from classes.Convpress import Convpress, RepetitionPenaltyType
 from classes.ConvGeneticAlgorithm import ConvGeneticAlgorithm
@@ -15,13 +16,18 @@ def main():
 
     args = parse_args_compress()
 
-    convpress = Convpress()
+    byte_generator = ByteGenerator("latin1")
+    convpress = Convpress(byte_generator)
+    genetic_algorithm = ConvGeneticAlgorithm()
+
     print(f"Loading: {args.input_file.name}")
     convpress.load_file(filename=args.input_file)
+
     convpress.set_output_file(output_file=args.output_file)
+
     convpress.set_repetition_penalty_type(RepetitionPenaltyType.DIVIDE_BY_NUMBER_OF_REPETITIONS)
 
-    genetic_algorithm = ConvGeneticAlgorithm()
+    
 
     for _ in range(args.ps):
         filter_size = random.randrange(args.fsmin, args.fsmax+1)

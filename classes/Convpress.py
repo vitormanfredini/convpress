@@ -6,6 +6,7 @@ from enum import Enum, auto
 from io import TextIOWrapper
 
 from typing import List
+from classes.ByteGenerator import ByteGenerator
 from classes.ConvFilter import ConvFilter
 
 from utils.bytes_operations import bytestring_to_bytelist
@@ -43,9 +44,8 @@ class Convpress:
     and generating the output file
     """
 
-    bytelist: List[bytes] = field(default_factory=list)
-    uniquebytelist: List[bytes] = field(default_factory=list)
-    adittionalbytelist: List[bytes] = field(default_factory=list)
+    byte_list: List[bytes] = field(default_factory=list)
+    unique_byte_list: List[bytes] = field(default_factory=list)
     input_file: TextIOWrapper = None
     output_file: TextIOWrapper = None
     wildcard_byte: bytes = None
@@ -55,15 +55,19 @@ class Convpress:
     decompress_filters: List[ConvFilter] = field(default_factory=list)
     indexes_affected_by_filters: List[List[bool]] = field(default_factory=list)
     filters_in_use: List[ConvFilter] = field(default_factory=list)
-    encoding: str = "latin1"
     penalty_type: RepetitionPenaltyType = RepetitionPenaltyType.DIVIDE_BY_NUMBER_OF_REPETITIONS
 
-    def reset(self):
+    def __init__(self, byte_generator: ByteGenerator):
         """resets everything"""
 
-        self.bytelist = []
-        self.uniquebytelist = []
-        self.adittionalbytelist = []
+        self.byte_generator = byte_generator
+        self.reset()
+
+    def reset(self):
+        """ reset the things the need to be reseted """
+
+        self.byte_list = []
+        self.unique_byte_list = []
         self.input_file = None
         self.wildcard_byte = None
         self.current_filters_scores = []
@@ -79,11 +83,11 @@ class Convpress:
 
     def get_bytelist(self) -> list:
         """get the bytelist"""
-        return self.bytelist
+        return self.byte_list
 
     def get_unique_bytelist(self) -> list:
         """get a list of unique bytes in the input file"""
-        return self.uniquebytelist
+        return self.unique_byte_list
 
     def get_wildcard_byte(self):
         """get wildcard byte that is currently being used"""
@@ -91,7 +95,7 @@ class Convpress:
 
     def load_bytelist_from_bytestring(self, bytestring: bytes):
         """loads bytelist using a bytestring"""
-        self.bytelist = bytestring_to_bytelist(bytestring)
+        self.byte_list = bytestring_to_bytelist(bytestring)
 
     def load_file_for_decompression(self, filename: TextIOWrapper):
         """loads file for decompressing it"""
@@ -128,7 +132,7 @@ class Convpress:
         print("Loading data")
         byte = self.input_file.read(1)
         while byte:
-            self.bytelist.append(byte)
+            self.byte_list.append(byte)
             byte = self.input_file.read(1)
         self.input_file.close()
 
@@ -140,13 +144,15 @@ class Convpress:
 
         byte = self.input_file.read(1)
         while byte:
-            self.bytelist.append(byte)
-            if byte not in self.uniquebytelist:
-                self.uniquebytelist.append(byte)
+            self.byte_list.append(byte)
+            if byte not in self.unique_byte_list:
+                self.unique_byte_list.append(byte)
             byte = self.input_file.read(1)
         self.input_file.close()
 
-        self.wildcard_byte = self.get_next_available_byte()
+        self.wildcard_byte = self.byte_generator.get_next_available_byte(
+            except_those=self.unique_byte_list
+            )
 
     def convolve_all(self, filters_to_convolve: List[ConvFilter]):
         """convolve all filters and save their matches"""
@@ -162,12 +168,12 @@ class Convpress:
         matches = []
         bytelist_idx = 0
 
-        while bytelist_idx < len(self.bytelist) - filter_to_convolve.get_size():
+        while bytelist_idx < len(self.byte_list) - filter_to_convolve.get_size():
             match = True
             for kernel_idx in range(filter_to_convolve.get_size()):
                 if kernel[kernel_idx] == self.wildcard_byte:
                     continue
-                if kernel[kernel_idx] == self.bytelist[bytelist_idx+kernel_idx]:
+                if kernel[kernel_idx] == self.byte_list[bytelist_idx+kernel_idx]:
                     continue
                 match = False
             if match:
@@ -186,7 +192,7 @@ class Convpress:
         self.__generate_boolean_lists_of_filters_matches()
 
         indexes_repetition_count: List[int] = [
-            0 for i in range(len(self.bytelist))]
+            0 for i in range(len(self.byte_list))]
         for boolean_list in self.indexes_affected_by_filters:
             for idx, item in enumerate(boolean_list):
                 if item:
@@ -215,7 +221,7 @@ class Convpress:
 
             filter_to_read = self.filters_in_use[idx_matches]
             boolean_indexes_it_affects = [
-                False for i in range(len(self.bytelist))]
+                False for i in range(len(self.byte_list))]
 
             for match_index in filter_matches:
                 for k in range(filter_to_read.get_size()):
@@ -227,7 +233,7 @@ class Convpress:
 
     def __calculate_string_coverage(self) -> float:
 
-        boolean_unique_matches = [False for i in range(len(self.bytelist))]
+        boolean_unique_matches = [False for i in range(len(self.byte_list))]
         count = 0
 
         if len(self.indexes_affected_by_filters) == 0:
@@ -240,7 +246,7 @@ class Convpress:
                         boolean_unique_matches[idx] = True
                         count += 1
 
-        return count / len(self.bytelist)
+        return count / len(self.byte_list)
 
     def calculate_one_score(self, affected_by_filter: List[bool], bytes_repetition: List[int]):
         """
@@ -292,34 +298,6 @@ class Convpress:
         print('debug_scores')
         print(self.current_filters_scores)
 
-    def get_next_available_byte(self):
-        """
-        Get a byte value that haven't been used yet
-        """
-
-        if self.encoding not in Convpress.get_supported_encodings():
-            raise ValueError(f"Encoding {self.encoding} is not supported")
-
-        max_chars = 256
-        for i in range(max_chars):
-            byte = chr(i).encode(self.encoding)
-            if len(byte) > 1:
-                continue
-            if byte in self.uniquebytelist:
-                continue
-            if byte in self.adittionalbytelist:
-                continue
-            self.adittionalbytelist.append(byte)
-            return byte
-
-        raise RanOutOfPossibleBytes(
-            "All possible bytes are in use. Can't proceed.")
-
-    @staticmethod
-    def get_supported_encodings():
-        """get list of supported encodings"""
-        return ['utf-8', 'latin1', 'cp1252']
-
     def get_min_matches_necessary(self):
         """Number of matches necessary to reduce the string more than it adds to it"""
         return 20
@@ -337,12 +315,13 @@ class Convpress:
             + the filter itself (number of bytes will be the same as the filter size)
         """
 
-        header = "cp".encode(self.encoding)
+        encoding = self.byte_generator.get_encoding()
+        header = "cp".encode(encoding)
         header += self.wildcard_byte
-        header += f"{len(used_filters):04}".encode(self.encoding)
+        header += f"{len(used_filters):04}".encode(encoding)
         for filter_to_write in used_filters:
             header += filter_to_write.get_byte_it_represents()
-            header += f"{filter_to_write.get_size():02}".encode(self.encoding)
+            header += f"{filter_to_write.get_size():02}".encode(encoding)
             for byte in filter_to_write.get_kernel():
                 header += byte
         return header
@@ -353,7 +332,7 @@ class Convpress:
         Returns the filters that were actually used.
         """
 
-        used_actually_used: List[ConvFilter] = []
+        actually_used: List[ConvFilter] = []
 
         for filter_to_convolve in filters_to_use:
 
@@ -362,7 +341,9 @@ class Convpress:
             if len(matches) < self.get_min_matches_necessary():
                 continue
 
-            newbyte = self.get_next_available_byte()
+            newbyte = self.byte_generator.get_next_available_byte(
+                except_those=self.unique_byte_list
+                )
             filter_to_convolve.set_byte_it_represents(newbyte)
 
             self.replace_matches_for_newbyte(
@@ -370,9 +351,9 @@ class Convpress:
                 filter_used=filter_to_convolve
             )
 
-            used_actually_used.append(filter_to_convolve)
+            actually_used.append(filter_to_convolve)
 
-        return used_actually_used
+        return actually_used
 
     def replace_matches_for_newbyte(self, matches: List[int], filter_used: ConvFilter):
         """
@@ -385,24 +366,24 @@ class Convpress:
             wildcard_byte=self.get_wildcard_byte())
 
         for matched_idx in matches:
-            self.bytelist[matched_idx] = filter_used.get_byte_it_represents()
+            self.byte_list[matched_idx] = filter_used.get_byte_it_represents()
 
         indexes_to_pop = []
-        for byte_idx, byte in enumerate(self.bytelist):
+        for byte_idx, byte in enumerate(self.byte_list):
             if byte == filter_used.get_byte_it_represents():
                 for filter_idx in range(filter_used.get_size()):
                     if filter_idx > 0 and filter_idx not in filter_wildcard_indexes:
                         indexes_to_pop.append(byte_idx+filter_idx)
 
         for index in reversed(indexes_to_pop):
-            self.bytelist.pop(index)
+            self.byte_list.pop(index)
 
     def decompress(self) -> None:
         """
         Decompress the bytelist by replacing the bytes
         for its corresponding filter's kernel
         """
-        for idx, byte in enumerate(self.bytelist):
+        for idx, byte in enumerate(self.byte_list):
             for byte_decompress_idx, byte_to_decompress in enumerate(self.bytes_to_decompress):
                 if byte != byte_to_decompress:
                     continue
@@ -416,7 +397,7 @@ class Convpress:
         if header is not None:
             self.output_file.write(header)
 
-        for byte in self.bytelist:
+        for byte in self.byte_list:
             self.output_file.write(byte)
         self.output_file.close()
 
@@ -430,6 +411,6 @@ class Convpress:
             if kernel_byte == self.wildcard_byte:
                 continue
             if kernel_idx == 0:
-                self.bytelist[byte_index] = kernel_byte
+                self.byte_list[byte_index] = kernel_byte
             else:
-                self.bytelist.insert(byte_index + kernel_idx, kernel_byte)
+                self.byte_list.insert(byte_index + kernel_idx, kernel_byte)
